@@ -40,7 +40,7 @@ function splitFileIntoChunks(file_path, chunk_size) {
     return fileDir;
 }
   
-function reconstructMP4FromChunks(chunk_directory, output_filename) {
+function reconstructMP4FromChunks(chunk_directory, output_filename, totalChunks) {
     const output_directory = chunk_directory;
     const output_file = path.join(output_directory, output_filename);
     const files = fs.readdirSync(chunk_directory);
@@ -55,13 +55,35 @@ function reconstructMP4FromChunks(chunk_directory, output_filename) {
   
     const outputStream = fs.createWriteStream(output_file);
   
+    let expectedChunkNumber = 1;
+  
     for (const file of sortedFiles) {
       const chunk_filepath = path.join(chunk_directory, file);
       const chunk_data = fs.readFileSync(chunk_filepath, 'utf-8');
   
+      // Verificar si el número de fragmento es el esperado
+      const chunkNumber = parseInt(path.parse(file).name.split('_')[1]);
+      while (expectedChunkNumber < chunkNumber) {
+        // Generar datos dummy para los fragmentos faltantes
+        const dummyData = Buffer.alloc(10 * 1024 * 1024); // Tamaño del chunk dummy (10MB)
+        outputStream.write(dummyData);
+  
+        expectedChunkNumber++;
+      }
+  
       // Convertir datos hexadecimales a binarios
       const binary_data = Buffer.from(chunk_data, 'hex');
       outputStream.write(binary_data);
+  
+      expectedChunkNumber++;
+    }
+  
+    // Generar datos dummy para los fragmentos restantes (si hay)
+    while (expectedChunkNumber <= totalChunks) {
+      const dummyData = Buffer.alloc(10 * 1024 * 1024); // Tamaño del chunk dummy (10MB)
+      outputStream.write(dummyData);
+  
+      expectedChunkNumber++;
     }
   
     outputStream.end();

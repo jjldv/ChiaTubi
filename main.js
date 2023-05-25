@@ -20,8 +20,8 @@ async function handlesplitFileIntoChunks (event,dirName, chunkSizeMB) {
     let FolderOuput = splitFileIntoChunks(dirName,chunkSizeMB );
     return FolderOuput;
 }
-async function handlereconstructMP4FromChunks (event,FolderPath,OutputName) {
-    let Output = reconstructMP4FromChunks(FolderPath ,OutputName);
+async function handlereconstructMP4FromChunks (event,FolderPath,OutputName,totalChunks) {
+    let Output = reconstructMP4FromChunks(FolderPath ,OutputName,totalChunks);
     return Output;
 }
 

@@ -5,7 +5,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
     setTitle: (title) => ipcRenderer.send('set-title', title),
     openFile: () => ipcRenderer.invoke('openFile'),
     splitFileIntoChunks: (FilePath, ChunkSize) => ipcRenderer.invoke('splitFileIntoChunks', FilePath, ChunkSize),
-    reconstructMP4FromChunks: (FolderPath,OutputName) => ipcRenderer.invoke('reconstructMP4FromChunks', FolderPath,OutputName),
+    reconstructMP4FromChunks: (FolderPath,OutputName,totalChunks) => ipcRenderer.invoke('reconstructMP4FromChunks', FolderPath,OutputName,totalChunks),
     
 })
 // All the Node.js APIs are available in the preload process.
