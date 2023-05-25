@@ -1,19 +1,27 @@
 body {
-    margin: 0;
-    padding: 0;
-  }
-  
-  .video-container {
-    position: relative;
-    width: 100%;
-    padding-bottom: 56.25%; /* Proporción 16:9 para el contenedor de video */
-  }
-  
-  #videoPlayer {
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-  }
-  
+  margin: 0px;
+  color: rgba(0, 0, 0, 0.87);
+  font-family: Roboto, Helvetica, Arial, sans-serif;
+  font-weight: 400;
+  font-size: 1rem;
+  line-height: 1.5;
+  letter-spacing: 0.00938em;
+  background-color: rgb(250, 250, 250);
+}
+
+.video-container {
+  position: relative;
+  width: 100%;
+  padding-bottom: 56.25%; /* Proporción 16:9 para el contenedor de video */
+}
+
+#my-video {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  margin: auto;
+  width: 80%; /* Ajusta el ancho del reproductor según tus preferencias */
+  height: auto; /* La altura se ajustará automáticamente según la proporción de aspecto 16:9 */
+}

@@ -29,6 +29,10 @@
     "video.js": "^8.3.0"
   },
   "dependencies": {
-    "electron-squirrel-startup": "^1.0.0"
+    "bootstrap": "^5.2.3",
+    "crypto": "^1.0.1",
+    "electron-squirrel-startup": "^1.0.0",
+    "fs": "^0.0.1-security",
+    "path": "^0.12.7"
   }
 }

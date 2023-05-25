@@ -1,46 +1,64 @@
 // main.js
 
-// Modules to control application life and create native browser window
-const { app, BrowserWindow } = require('electron')
-const path = require('path')
+const { app, BrowserWindow, dialog , ipcMain } = require('electron')
+const path = require('path');
+const { splitFileIntoChunks ,reconstructMP4FromChunks} = require('./Utils');
 
-const createWindow = () => {
-  // Create the browser window.
-  const mainWindow = new BrowserWindow({
-    width: 800,
-    height: 600,
-    webPreferences: {
-        contentSecurityPolicy: "default-src 'self'; style-src 'self' 'unsafe-inline'",
-        preload: path.join(__dirname, 'preload.js')
+function handleSetTitle (event, title) {
+    const webContents = event.sender
+    const win = BrowserWindow.fromWebContents(webContents)
+    win.setTitle(title)
+    return event.returnValue = { result: "ok", dato: {} };
+}
+async function handleFileOpen () {
+    const { canceled, filePaths } = await dialog.showOpenDialog()
+    if (!canceled) {
+      return filePaths[0]
     }
-  })
-
-  // and load the index.html of the app.
-  mainWindow.loadFile('index.html')
-
-  // Open the DevTools.
-  // mainWindow.webContents.openDevTools()
+}
+async function handlesplitFileIntoChunks (event,dirName, chunkSizeMB) {
+    let FolderOuput = splitFileIntoChunks(dirName,chunkSizeMB );
+    return FolderOuput;
+}
+async function handlereconstructMP4FromChunks (event,FolderPath,OutputName) {
+    let Output = reconstructMP4FromChunks(FolderPath ,OutputName);
+    return Output;
 }
 
-// This method will be called when Electron has finished
-// initialization and is ready to create browser windows.
-// Algunas APIs pueden solamente ser usadas despues de que este evento ocurra.
+function createWindow() {
+    // Create the browser window.
+    const mainWindow = new BrowserWindow({
+        width: 800,
+        height: 600,
+        webPreferences: {
+            nodeIntegration: false, // No es necesario habilitar la integración de Node.js en el proceso de renderizado
+            contextIsolation: true, // Se recomienda habilitar el aislamiento de contexto para mayor seguridad
+            preload: path.join(__dirname, 'preload.js')
+        }
+    });
+
+    mainWindow.loadFile('index.html');
+
+    // mainWindow.webContents.openDevTools();
+}
+
 app.whenReady().then(() => {
-  createWindow()
+    ipcMain.on('set-title', handleSetTitle);
+    ipcMain.handle('openFile', handleFileOpen);
+    ipcMain.handle('splitFileIntoChunks', handlesplitFileIntoChunks);
+    ipcMain.handle('reconstructMP4FromChunks', handlereconstructMP4FromChunks);
+    createWindow();
 
-  app.on('activate', () => {
-    // On macOS it's common to re-create a window in the app when the
-    // dock icon is clicked and there are no other windows open.
-    if (BrowserWindow.getAllWindows().length === 0) createWindow()
-  })
-})
+    app.on('activate', () => {
+        if (BrowserWindow.getAllWindows().length === 0) {
+            createWindow();
+        }
+    });
+});
 
-// Quit when all windows are closed, except on macOS. There, it's common
-// for applications and their menu bar to stay active until the user quits
-// explicitly with Cmd + Q.
+
 app.on('window-all-closed', () => {
-  if (process.platform !== 'darwin') app.quit()
-})
-
-// In this file you can include the rest of your app's specific main process
-// code. Tu también puedes ponerlos en archivos separados y requerirlos aquí.
+    if (process.platform !== 'darwin') {
+        app.quit();
+    }
+});
