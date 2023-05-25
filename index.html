@@ -1,0 +1,39 @@
+<!--index.html-->
+
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8">
+    <!-- https://developer.mozilla.org/en-US/docs/Web/HTTP/CSP -->
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'">
+    <link href="node_modules/video.js/dist/video-js.min.css" rel="stylesheet">
+    <title>ChiaTube</title>
+  </head>
+  <body>
+    <div class="video-container">
+        <video
+    id="my-video"
+    class="video-js vjs-theme-city"
+    controls
+    preload="auto"
+    width="640"
+    height="264"
+    data-setup="{}"
+  >
+    <source src="D:\Dev\GitHub\ChiaTube\video\video.mp4" type="video/mp4" />
+    <p class="vjs-no-js">
+      To view this video please enable JavaScript, and consider upgrading to a
+      web browser that
+      <a href="https://videojs.com/html5-video-support/" target="_blank"
+        >supports HTML5 video</a
+      >
+    </p>
+  </video>
+      </div>
+      <script src="node_modules/video.js/dist/video.min.js"></script>
+    <script>
+        var player = videojs('my-video');
+        // Personaliza y configura el reproductor de video según tus necesidades
+    </script>
+  </body>
+</html>
