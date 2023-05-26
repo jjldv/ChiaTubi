@@ -1,31 +1,43 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <link rel="stylesheet" href="node_modules/bootstrap/dist/css/bootstrap.min.css">
-  <link href="node_modules/video.js/dist/video-js.min.css" rel="stylesheet">
-  <link href="https://unpkg.com/video.js@7/dist/video-js.min.css" rel="stylesheet"  />
-  <link href="https://unpkg.com/@videojs/themes@1/dist/city/index.css" rel="stylesheet"  />
-  <link href="css/style.css" rel="stylesheet"  />
-  <title>Reproductor de Video</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="node_modules/bootstrap/dist/css/bootstrap.min.css">
+    <link href="node_modules/video.js/dist/video-js.min.css" rel="stylesheet">
+    <link href="https://unpkg.com/video.js@7/dist/video-js.min.css" rel="stylesheet"  />
+    <link href="https://unpkg.com/@videojs/themes@1/dist/city/index.css" rel="stylesheet"  />
+    <link href="css/style.css" rel="stylesheet"  />
+    <title>Reproductor de Video</title>
 
 </head>
 <body>
-  <div class="container mt-5">
-    <div class="row justify-content-center">
-      <div class="col-lg-8">
-        <div class="video-container">
-          <video id="my-video" class="video-js vjs-theme-city" controls  preload="auto" width="100%" height="100%">
-            <source src="D:\Dev\GitHub\ChiaTube\video\video.mp4" type="video/mp4">
-          </video>
+    <div class="container mt-5">
+        <div class="row justify-content-center">
+            <div class="col-lg-8">
+                <div class="video-container">
+                    <video id="my-video" class="video-js vjs-theme-city" controls preload="auto"  width="100%" height="100%">
+                    </video>
+                </div>
+            </div>
         </div>
-      </div>
+        <br>
+        <div class="row">
+            <div class="col-lg-12" style="text-align: center;">
+                <button class="btn btn-primary" onclick="SelectFileToSplit()">Select Video File to Split (mp4)</button>
+              </div>
+        </div>
+        <br>
+        <div class="row">
+            <div class="col-lg-12" style="text-align: center;">
+                <button class="btn btn-primary" onclick="SelectFolderToMerge()">Select Folder to Merge</button>
+              </div>
+        </div>
     </div>
-  </div>
-  <script src="node_modules/video.js/dist/video.min.js"></script>
-  <script>
-    var player = videojs('my-video');
-  </script>
+    <script src="node_modules/video.js/dist/video.min.js"></script>
+    <script src="js/Script.js"></script>
+    <script>
+        //let player = videojs('my-video');
+    </script>
 </body>
 </html>

@@ -10,12 +10,30 @@ function handleSetTitle (event, title) {
     win.setTitle(title)
     return event.returnValue = { result: "ok", dato: {} };
 }
-async function handleFileOpen () {
-    const { canceled, filePaths } = await dialog.showOpenDialog()
-    if (!canceled) {
-      return filePaths[0]
+async function handleFileOpen() {
+    const options = {
+      filters: [
+        { name: 'Archivos MP4', extensions: ['mp4'] }
+      ]
+    };
+  
+    const { canceled, filePaths } = await dialog.showOpenDialog(options);
+  
+    if (!canceled && filePaths.length > 0) {
+      return filePaths[0];
     }
 }
+async function handleFolderOpen() {
+    const options = {
+      properties: ['openDirectory']
+    };
+  
+    const { canceled, filePaths } = await dialog.showOpenDialog(options);
+  
+    if (!canceled && filePaths.length > 0) {
+      return filePaths[0];
+    }
+  }
 async function handlesplitFileIntoChunks (event,dirName, chunkSizeMB) {
     let FolderOuput = splitFileIntoChunks(dirName,chunkSizeMB );
     return FolderOuput;
@@ -45,6 +63,7 @@ function createWindow() {
 app.whenReady().then(() => {
     ipcMain.on('set-title', handleSetTitle);
     ipcMain.handle('openFile', handleFileOpen);
+    ipcMain.handle('openFolder', handleFolderOpen);
     ipcMain.handle('splitFileIntoChunks', handlesplitFileIntoChunks);
     ipcMain.handle('reconstructMP4FromChunks', handlereconstructMP4FromChunks);
     createWindow();

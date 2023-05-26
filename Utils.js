@@ -1,5 +1,6 @@
 const fs = require('fs');
 const path = require('path');
+const ChunkSize = 10;
 
 
 
@@ -65,7 +66,7 @@ function reconstructMP4FromChunks(chunk_directory, output_filename, totalChunks)
       const chunkNumber = parseInt(path.parse(file).name.split('_')[1]);
       while (expectedChunkNumber < chunkNumber) {
         // Generar datos dummy para los fragmentos faltantes
-        const dummyData = Buffer.alloc(10 * 1024 * 1024); // Tamaño del chunk dummy (10MB)
+        const dummyData = Buffer.alloc(ChunkSize * 1024 * 1024); // Tamaño del chunk dummy (10MB)
         outputStream.write(dummyData);
   
         expectedChunkNumber++;
