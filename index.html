@@ -1,22 +1,25 @@
 <!DOCTYPE html>
 <html lang="es">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="stylesheet" href="node_modules/bootstrap/dist/css/bootstrap.min.css">
     <link href="node_modules/video.js/dist/video-js.min.css" rel="stylesheet">
-    <link href="https://unpkg.com/video.js@7/dist/video-js.min.css" rel="stylesheet"  />
-    <link href="https://unpkg.com/@videojs/themes@1/dist/city/index.css" rel="stylesheet"  />
-    <link href="css/style.css" rel="stylesheet"  />
+    <link href="https://unpkg.com/video.js@7/dist/video-js.min.css" rel="stylesheet" />
+    <link href="https://unpkg.com/@videojs/themes@1/dist/city/index.css" rel="stylesheet" />
+    <link href="css/style.css" rel="stylesheet" />
     <title>Reproductor de Video</title>
 
 </head>
+
 <body>
     <div class="container mt-5">
         <div class="row justify-content-center">
             <div class="col-lg-8">
                 <div class="video-container">
-                    <video id="my-video" class="video-js vjs-theme-city" controls preload="auto"  width="100%" height="100%">
+                    <video id="my-video" class="video-js vjs-theme-city" controls preload="auto" width="100%"
+                        height="100%">
                     </video>
                 </div>
             </div>
@@ -25,19 +28,57 @@
         <div class="row">
             <div class="col-lg-12" style="text-align: center;">
                 <button class="btn btn-primary" onclick="SelectFileToSplit()">Select Video File to Split (mp4)</button>
-              </div>
+            </div>
         </div>
         <br>
         <div class="row">
             <div class="col-lg-12" style="text-align: center;">
                 <button class="btn btn-primary" onclick="SelectFolderToMerge()">Select Folder to Merge</button>
-              </div>
+            </div>
         </div>
+        <br>
+        <div class="row">
+            <div class="col-lg-12" style="text-align: center;">
+                <img id="preview" src="img/imgplaceholder.png" alt="Image preview..." onclick="SelectChanelImage()">
+            </div>
+            <div class="col-lg-12" style="text-align: center;">
+                <button class="btn btn-primary" onclick="SelectChanelImage()">Select Chanel Image</button>
+            </div>
+            <div class="col-lg-12" style="text-align: center;">
+                <label for="chanelName">Chanel Name</label>
+                <input type="text" id="chanelName" placeholder="Chanel Name" class="form-control">
+            </div>
+            <div class="col-lg-12" style="text-align: center;">
+                <label for="Fee">Fee in XCH(will be by 2)</label>
+                <input type="number" id="Fee" placeholder="Fee" value="0" class="form-control">
+            </div>
+        </div>
+        <br>
+        <div class="row">
+            <div class="col-lg-12" style="text-align: center;">
+                <button class="btn btn-primary" onclick="CreateChanel()">Create Chanel (1 mojo)</button>
+            </div>
+        </div>
+        <br>
+        <div class="row" id="OwnedStores">
+
+        </div>
+
     </div>
+    <br>
+    <br>
+    <br>
+    <br>
+    <br>
     <script src="node_modules/video.js/dist/video.min.js"></script>
     <script src="js/Script.js"></script>
     <script>
         //let player = videojs('my-video');
+        window.addEventListener('load', function () {
+            // LoadChanels();
+        });
+
     </script>
 </body>
+
 </html>

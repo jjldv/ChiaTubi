@@ -3,7 +3,12 @@ const { contextBridge, ipcRenderer } = require('electron')
 
 contextBridge.exposeInMainWorld('electronAPI', {
     setTitle: (title) => ipcRenderer.send('set-title', title),
-    openFile: () => ipcRenderer.invoke('openFile'),
+    openFile: (title,extensions) => ipcRenderer.invoke('openFile',title,extensions),
+    GetChanels: () => ipcRenderer.invoke('GetChanels'),
+    createChanel: (Chanel) => ipcRenderer.invoke('createChanel', Chanel),
+    IsChanelConfirmed: (idChanel) => ipcRenderer.invoke('IsChanelConfirmed', idChanel),
+    IsChanelDetailsConfirmed: (idChanel) => ipcRenderer.invoke('IsChanelDetailsConfirmed', idChanel),
+    InsertChanelDetails: (chanel) => ipcRenderer.invoke('InsertChanelDetails', chanel),
     openFolder: () => ipcRenderer.invoke('openFolder'),
     splitFileIntoChunks: (FilePath, ChunkSize) => ipcRenderer.invoke('splitFileIntoChunks', FilePath, ChunkSize),
     reconstructMP4FromChunks: (FolderPath,OutputName,totalChunks) => ipcRenderer.invoke('reconstructMP4FromChunks', FolderPath,OutputName,totalChunks),
