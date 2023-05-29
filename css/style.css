@@ -42,3 +42,51 @@ body {
 .CardChanel {
     text-align: center;
 }
+
+/*loading*/
+/* Estilos para el fondo del modal */
+/* Estilos para el fondo del modal */
+.loading-backdrop {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(0, 0, 0, 0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 9999;
+}
+
+.loading-container {
+    text-align: center;
+}
+
+/* Estilos para el spinner */
+.loading-spinner {
+    position: relative;
+    display: inline-block;
+    width: 4rem;
+    height: 4rem;
+    border: 0.3rem solid #f3f3f3;
+    border-top-color: #3498db;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+
+.loading-message {
+    left: 0;
+    width: 100%;
+    text-align: center;
+    color: #fff;
+    font-size: 0.875rem;
+}
+
+@keyframes spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+/*end loading*/

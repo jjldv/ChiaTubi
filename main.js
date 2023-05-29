@@ -2,17 +2,12 @@
 
 const { app, BrowserWindow, dialog, ipcMain } = require('electron')
 const path = require('path');
-const {
-    splitFileIntoChunks,
-    reconstructMP4FromChunks,
-    IsChanelConfirmed,
-    createChanel,
-    InsertChanelDetails,
-    IsChanelDetailsConfirmed,
-    GetChanels
-} = require('./Utils');
+const ChiaDataLayer = require('./ChiaDataLayer');
 
-function handleSetTitle(event, title) {
+const chiaDataLayer = new ChiaDataLayer();
+
+
+function SetTitle(event, title) {
     const webContents = event.sender
     const win = BrowserWindow.fromWebContents(webContents)
     win.setTitle(title)
@@ -21,7 +16,7 @@ function handleSetTitle(event, title) {
         dato: {}
     };
 }
-async function handleFileOpen(event, title, extensions) {
+async function FileOpen(event, title, extensions) {
     const options = {
         filters: [{
             name: title,
@@ -37,32 +32,42 @@ async function handleFileOpen(event, title, extensions) {
         return filePaths[0];
     }
 }
-async function handlecreateChanel(event, Chanel) {
-    let Response = await createChanel(Chanel);
+async function CreateStore(event,Fee) {
+    let Response = await chiaDataLayer.createStore(Fee);
 
     return Response;
 }
-async function handleIsChanelConfirmed(event, idChanel) {
-    let Response = await IsChanelConfirmed(idChanel);
+async function IsStoreConfirmed(event, idStore) {
+    let Response = await chiaDataLayer.isStoreConfirmed(idStore);
 
     return Response;
 }
-async function handleIsChanelDetailsConfirmed(event, idChanel) {
-    let Response = await IsChanelDetailsConfirmed(idChanel);
+async function IsKeyConfirmed(event, idStore, key) {
+    let Response = await chiaDataLayer.isKeyConfirmed(idStore, key);
 
     return Response;
 }
-async function handleInsertChanelDetails(event, chanel) {
-    let Response = await InsertChanelDetails(chanel);
+async function InsertChanelDetails(event, chanel) {
+    let Response = await chiaDataLayer.insertChanelDetails(chanel);
 
     return Response;
 }
-async function handleGetChanels(event) {
-    let Response = await GetChanels();
+async function InsertVideoDetails(event, Video) {
+    let Response = await chiaDataLayer.insertVideoDetails(Video);
 
     return Response;
 }
-async function handleFolderOpen() {
+async function GetChanels(event) {
+    let Response = await chiaDataLayer.getChanels();
+
+    return Response;
+}
+async function GetChanelVideos(event) {
+    let Response = await chiaDataLayer.getChanelVideos();
+
+    return Response;
+}
+async function FolderOpen() {
     const options = {
         properties: ['openDirectory']
     };
@@ -77,12 +82,12 @@ async function handleFolderOpen() {
     }
     return null;
 }
-async function handlesplitFileIntoChunks(event, dirName, chunkSizeMB) {
-    let FolderOuput = splitFileIntoChunks(dirName, chunkSizeMB);
+async function splitFileIntoChunks(event, dirName, chunkSizeMB) {
+    let FolderOuput = chiaDataLayer.splitFileIntoChunks(dirName, chunkSizeMB);
     return FolderOuput;
 }
-async function handlereconstructMP4FromChunks(event, FolderPath, OutputName, totalChunks) {
-    let Output = reconstructMP4FromChunks(FolderPath, OutputName, totalChunks);
+async function reconstructMP4FromChunks(event, FolderPath, OutputName, totalChunks) {
+    let Output = chiaDataLayer.reconstructMP4FromChunks(FolderPath, OutputName, totalChunks);
     return Output;
 }
 
@@ -104,16 +109,18 @@ function createWindow() {
 }
 
 app.whenReady().then(() => {
-    ipcMain.on('set-title', handleSetTitle);
-    ipcMain.handle('openFile', handleFileOpen);
-    ipcMain.handle('createChanel', handlecreateChanel);
-    ipcMain.handle('IsChanelConfirmed', handleIsChanelConfirmed);
-    ipcMain.handle('IsChanelDetailsConfirmed', handleIsChanelDetailsConfirmed);
-    ipcMain.handle('InsertChanelDetails', handleInsertChanelDetails);
-    ipcMain.handle('GetChanels', handleGetChanels);
-    ipcMain.handle('openFolder', handleFolderOpen);
-    ipcMain.handle('splitFileIntoChunks', handlesplitFileIntoChunks);
-    ipcMain.handle('reconstructMP4FromChunks', handlereconstructMP4FromChunks);
+    ipcMain.handle('set-title', SetTitle);
+    ipcMain.handle('openFile', FileOpen);
+    ipcMain.handle('CreateStore', CreateStore);
+    ipcMain.handle('IsStoreConfirmed', IsStoreConfirmed);
+    ipcMain.handle('IsKeyConfirmed', IsKeyConfirmed);
+    ipcMain.handle('InsertChanelDetails', InsertChanelDetails);
+    ipcMain.handle('InsertVideoDetails', InsertVideoDetails);
+    ipcMain.handle('GetChanelVideos', GetChanelVideos);
+    ipcMain.handle('GetChanels', GetChanels);
+    ipcMain.handle('openFolder', FolderOpen);
+    ipcMain.handle('splitFileIntoChunks', splitFileIntoChunks);
+    ipcMain.handle('reconstructMP4FromChunks', reconstructMP4FromChunks);
     createWindow();
 
     app.on('activate', () => {

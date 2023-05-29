@@ -1,16 +1,22 @@
 const fs = require('fs');
 const path = require('path');
-const { exec } = require('child_process');
-const { nativeImage } = require('electron');
-const { Console } = require('console');
-const ChunkSize = 10;
-let IsLogEnabled = true;
+const {
+    exec
+} = require('child_process');
+const {
+    nativeImage
+} = require('electron');
 
+function ChiaDatalayer() {
+    this.chunkSizeMB = 10; //in MB
+    this.chunkSize = this.chunkSizeMB * 1024 * 1024; //in MB
+    this.logEnabled = true;
+}
 
-function splitFileIntoChunks(file_path, chunk_size) {
+ChiaDatalayer.prototype.splitFileIntoChunks = function (file_path, chunk_size) {
     chunk_size = chunk_size * 1024 * 1024; // Convertir de MB a bytes
     const fileData = fs.readFileSync(file_path);
-    const fileDir = path.join(__dirname, 'video', convertToValidFolderName(path.basename(file_path)));
+    const fileDir = path.join(__dirname, 'video', this.convertToValidFolderName(path.basename(file_path)));
     const fileName = path.basename(file_path, path.extname(file_path));
 
     // Verificar si el directorio existe y eliminarlo si es necesario
@@ -44,11 +50,11 @@ function splitFileIntoChunks(file_path, chunk_size) {
         offset += chunk_size;
     }
 
-    Log(`El archivo MP4 ha sido dividido en ${chunk_number - 1} fragmentos.`);
+    this.log(`El archivo MP4 ha sido dividido en ${chunk_number - 1} fragmentos.`);
     return fileDir;
-}
+};
 
-function reconstructMP4FromChunks(chunk_directory, output_filename, totalChunks) {
+ChiaDatalayer.prototype.reconstructMP4FromChunks = function (chunk_directory, output_filename, totalChunks) {
     const output_directory = chunk_directory;
     const output_file = path.join(output_directory, output_filename);
     const files = fs.readdirSync(chunk_directory);
@@ -73,7 +79,7 @@ function reconstructMP4FromChunks(chunk_directory, output_filename, totalChunks)
         const chunkNumber = parseInt(path.parse(file).name.split('_')[1]);
         while (expectedChunkNumber < chunkNumber) {
             // Generar datos dummy para los fragmentos faltantes
-            const dummyData = Buffer.alloc(ChunkSize * 1024 * 1024); // Tamaño del chunk dummy (10MB)
+            const dummyData = Buffer.alloc(this.chunkSize); // Tamaño del chunk dummy (10MB)
             outputStream.write(dummyData);
 
             expectedChunkNumber++;
@@ -96,12 +102,11 @@ function reconstructMP4FromChunks(chunk_directory, output_filename, totalChunks)
 
     outputStream.end();
 
-    Log(`Los fragmentos en '${chunk_directory}' han sido combinados en el archivo '${output_file}'.`);
+    this.log(`Los fragmentos en '${chunk_directory}' han sido combinados en el archivo '${output_file}'.`);
     return output_file;
-}
+};
 
-
-function convertToValidFolderName(fileName) {
+ChiaDatalayer.prototype.convertToValidFolderName = function (fileName) {
     const invalidCharsRegex = /[^a-zA-Z0-9]/g;
     const replacementChar = "-"; // Carácter a utilizar como reemplazo para los caracteres no permitidos
 
@@ -109,87 +114,95 @@ function convertToValidFolderName(fileName) {
     const validName = fileName.replace(invalidCharsRegex, replacementChar);
 
     return validName.trim(); // Eliminar espacios en blanco al principio y al final del nombre
-}
+};
 
-async function runCommand(command) {
-    Log(command);
+ChiaDatalayer.prototype.runCommand = async function (command) {
+    this.log(command);
     return new Promise((resolve, reject) => {
         exec(command, (error, stdout, stderr) => {
             if (error) {
-                error = ParseOuput(error);
+                error = this.parseOutput(error);
                 reject(error);
                 return;
             }
-            stdout = ParseOuput(stdout);
+            stdout = this.parseOutput(stdout);
             resolve(stdout);
         });
     });
-}
+};
 
-async function createChanel(chanel) {
-    let OutputCmd = await runCommand("chia data create_data_store -m " + chanel.Fee);
+ChiaDatalayer.prototype.createStore = async function (fee) {
+    let OutputCmd = await this.runCommand("chia data create_data_store -m " + fee);
 
     return OutputCmd;
-}
-async function IsChanelConfirmed(idChanel) {
-    let OutputCmd = await runCommand("chia data get_root --id " + idChanel);
+};
+
+ChiaDatalayer.prototype.isStoreConfirmed = async function (idChanel) {
+    let OutputCmd = await this.runCommand("chia data get_root --id " + idChanel);
     return OutputCmd;
-}
-async function IsChanelDetailsConfirmed(idChanel) {
-    let KeyIsChanel = StringtoHex("IsChanel");
-    let OutputCmd = await runCommand("chia data get_value --id " + idChanel + " --key " + KeyIsChanel);
+};
+
+ChiaDatalayer.prototype.isKeyConfirmed = async function (idStore, key) {
+    let KeyHex = this.stringToHex(key);
+    let OutputCmd = await this.runCommand("chia data get_value --id " + idStore + " --key " + KeyHex);
     return OutputCmd;
-}
-async function GetChanels() {
+};
+
+ChiaDatalayer.prototype.getChanels = async function () {
     let Chanels = [];
-    let KeyIsChanel = StringtoHex("IsChanel");
-    let KeyName = StringtoHex("Name");
-    let KeyImage = StringtoHex("Image");
-    let OutputCmd = await runCommand("chia data get_subscriptions");
+    let KeyIsChanel = this.stringToHex("IsChanel");
+    let KeyName = this.stringToHex("Name");
+    let KeyImage = this.stringToHex("Image");
+    let OutputCmd = await this.runCommand("chia data get_subscriptions");
     if (OutputCmd.store_ids !== undefined) {
         for (let i = 0; i < OutputCmd.store_ids.length; i++) {
-            let OutputIsChanel = await runCommand("chia data get_value --id " + OutputCmd.store_ids[i] + " --key " + KeyIsChanel);
+            let OutputIsChanel = await this.runCommand("chia data get_value --id " + OutputCmd.store_ids[i] + " --key " + KeyIsChanel);
             if (OutputIsChanel.value === undefined)
                 continue;
 
-            let OuputName = await runCommand("chia data get_value --id " + OutputCmd.store_ids[i] + " --key " + KeyName);
-            let OuputImage = await runCommand("chia data get_value --id " + OutputCmd.store_ids[i] + " --key " + KeyImage);
+            let OuputName = await this.runCommand("chia data get_value --id " + OutputCmd.store_ids[i] + " --key " + KeyName);
+            let OuputImage = await this.runCommand("chia data get_value --id " + OutputCmd.store_ids[i] + " --key " + KeyImage);
             if (OuputName.value !== undefined && OuputImage.value !== undefined) {
-                let Chan = { Name: hexToString(OuputName.value), Image: hexToBase64(OuputImage.value), Id: OutputCmd.store_ids[i] };
+                let Chan = {
+                    Name: this.hexToString(OuputName.value),
+                    Image: this.hexToBase64(OuputImage.value),
+                    Id: OutputCmd.store_ids[i]
+                };
                 Chanels.push(Chan);
             }
 
         }
     }
     return Chanels;
-}
-async function InsertChanelDetails(chanel) {
-    let Image = await processImage(chanel.Image);
-    Image = base64ToHex(Image);
-    let KeyIsChanel = StringtoHex("IsChanel");
-    let KeyImage = StringtoHex("Image");
-    let KeyName = StringtoHex("Name");
-    let IsChanel = StringtoHex("true");
-    let Name = StringtoHex(chanel.Name);
+};
+
+ChiaDatalayer.prototype.insertChanelDetails = async function (chanel) {
+    let Image = await this.processImage(chanel.Image);
+    Image = this.base64ToHex(Image);
+    let KeyIsChanel = this.stringToHex("IsChanel");
+    let KeyImage = this.stringToHex("Image");
+    let KeyName = this.stringToHex("Name");
+    let IsChanel = this.stringToHex("true");
+    let Name = this.stringToHex(chanel.Name);
 
     const Jsonobject = {
         "id": chanel.Id,
         "fee": "0",
         "changelist": [{
-            "action": "insert",
-            "key": KeyIsChanel,
-            "value": IsChanel
-        },
-        {
-            "action": "insert",
-            "key": KeyName,
-            "value": Name
-        },
-        {
-            "action": "insert",
-            "key": KeyImage,
-            "value": Image
-        }
+                "action": "insert",
+                "key": KeyIsChanel,
+                "value": IsChanel
+            },
+            {
+                "action": "insert",
+                "key": KeyName,
+                "value": Name
+            },
+            {
+                "action": "insert",
+                "key": KeyImage,
+                "value": Image
+            }
         ]
     };
 
@@ -197,11 +210,46 @@ async function InsertChanelDetails(chanel) {
     const jsonData = JSON.stringify(Jsonobject, null, 2);
     fs.writeFileSync(filePath, jsonData, 'utf8');
 
-    let OutputCmd = await runCommand(`chia rpc data_layer batch_update  -j ${filePath}`);
+    let OutputCmd = await this.runCommand(`chia rpc data_layer batch_update  -j ${filePath}`);
     fs.unlinkSync(filePath);
     return OutputCmd;
+};
+ChiaDatalayer.prototype.insertVideoDetails = async function (Video) {
+    let Image = await this.processImage(Video.ImagePath);
+    Image = this.base64ToHex(Image);
+    let KeyIdStore = this.stringToHex("Video" + Video.Id);
+    let Size = await this.getFileSize(Video.VideoPath);
+    let TotalChunks = this.calculateNumberOfChunks(Size,this.chunkSizeMB);
+    let VideoDetails = {
+        Name: Video.Name,
+        IdChanel: Video.IdChanel,
+        Image: Image,
+        ChunkSize: this.chunkSizeMB,
+        Size: Size,
+        TotalChunks: TotalChunks
+    };
+    const Jsonobject = {
+        "id": Video.IdChanel,
+        "fee": "0",
+        "changelist": [{
+            "action": "insert",
+            "key": KeyIdStore,
+            "value": this.stringToHex(JSON.stringify(VideoDetails))
+        }]
+    };
+
+    const filePath = path.join(__dirname, 'temp', `insert_${Video.Id}.json`);
+    const jsonData = JSON.stringify(Jsonobject, null, 2);
+    fs.writeFileSync(filePath, jsonData, 'utf8');
+
+    let OutputCmd = await this.runCommand(`chia rpc data_layer batch_update  -j ${filePath}`);
+    fs.unlinkSync(filePath);
+    return OutputCmd;
+};
+ChiaDatalayer.prototype.getChanelVideos = async function (chanel) {
+    return "Holi";
 }
-function StringtoHex(text) {
+ChiaDatalayer.prototype.stringToHex = function (text) {
     var hexString = "";
 
     for (var i = 0; i < text.length; i++) {
@@ -210,18 +258,18 @@ function StringtoHex(text) {
     }
 
     return hexString;
-}
+};
 
-function hexToString(hex) {
+ChiaDatalayer.prototype.hexToString = function (hex) {
     var string = '';
     for (var i = 0; i < hex.length; i += 2) {
         var byte = parseInt(hex.substr(i, 2), 16);
         string += String.fromCharCode(byte);
     }
     return string;
-}
+};
 
-function base64ToHex(base64String) {
+ChiaDatalayer.prototype.base64ToHex = function (base64String) {
     // Remove the data URL prefix
     var base64Data = base64String.replace(/^data:image\/\w+;base64,/, "");
 
@@ -236,30 +284,33 @@ function base64ToHex(base64String) {
     }).join('');
 
     return hexString;
-}
+};
 
-function hexToBase64(hexString) {
-    // Convert the hexadecimal string to Uint8Array
-    var bytes = new Uint8Array(hexString.match(/.{1,2}/g).map(byte => parseInt(byte, 16)));
+ChiaDatalayer.prototype.hexToBase64 = function (hexString) {
+    try {
+        let base64String = Buffer.from(hexString, 'hex').toString('base64')
 
-    // Convert the Uint8Array to Base64 string
-    var base64String = btoa(String.fromCharCode.apply(null, bytes));
+        // Add the data URL prefix if needed
+        if (!base64String.startsWith("data:")) {
+            base64String = "data:image/png;base64," + base64String;
+        }
 
-    // Add the data URL prefix if needed
-    if (!base64String.startsWith("data:")) {
-        base64String = "data:image/png;base64," + base64String;
+        return base64String;
+    } catch (error) {
+        this.log("Error converting hexadecimal to base64:" + error);
+        return null;
     }
+};
 
-    return base64String;
-}
 
-function ParseOuput(output) {
+
+ChiaDatalayer.prototype.parseOutput = function (output) {
     output = output.replace(/'/g, '"');
     output = output.replace(/'/g, '"');
     output = output.replace(/True/gi, "true")
     output = output.replace(/False/gi, "false")
     output = output.replace(/None/gi, '"None"')
-    Log(output);
+    this.log(output);
     let regex = /ValueError:/;
     if (regex.test(output)) {
         var errorIndex = output.indexOf("ValueError: ");
@@ -267,8 +318,9 @@ function ParseOuput(output) {
     }
     output = JSON.parse(output);
     return output;
-}
-function processImage(FilePath) {
+};
+
+ChiaDatalayer.prototype.processImage = async function (FilePath) {
     const img = nativeImage.createFromPath(FilePath);
 
     const anchoOriginal = img.getSize().width;
@@ -286,33 +338,25 @@ function processImage(FilePath) {
 
         const imagenBase64 = imagenRedimensionada.toDataURL();
 
-        //   const rutaCarpeta = 'video'; // Ruta de la carpeta donde se guardaría la imagen redimensionada
-        //   const nombreArchivo = 'imagen_redimensionada.jpg'; // Nombre del archivo redimensionado
-        //   const rutaDestino = `${rutaCarpeta}/${nombreArchivo}`;
-
-        //   // Guardar la imagen redimensionada en la carpeta especificada (opcional)
-        //   fs.writeFileSync(rutaDestino, imagenRedimensionada.toJPEG(100));
-
-        // Devolver la imagen redimensionada en formato Base64
         return imagenBase64;
     } else {
         const imagenBase64 = img.toDataURL();
         return imagenBase64;
     }
+};
+ChiaDatalayer.prototype.getFileSize = async function (filePath) {
+    const stats = fs.statSync(filePath);
+    const fileSizeInBytes = stats.size;
+    const fileSizeInMB = fileSizeInBytes / (1024 * 1024);
+    return fileSizeInMB;
 }
-function Log(_data) {
-    if (IsLogEnabled) {
+ChiaDatalayer.prototype.calculateNumberOfChunks = function (fileSizeMB, chunkSizeMB) {
+    return Math.ceil(fileSizeMB / chunkSizeMB);
+}
+ChiaDatalayer.prototype.log = function (_data) {
+    if (this.logEnabled) {
         console.log(_data);
     }
-}
-
-module.exports = {
-    splitFileIntoChunks,
-    reconstructMP4FromChunks,
-    runCommand,
-    createChanel,
-    IsChanelConfirmed,
-    InsertChanelDetails,
-    IsChanelDetailsConfirmed,
-    GetChanels
 };
+
+module.exports = ChiaDatalayer;
