@@ -246,8 +246,28 @@ ChiaDatalayer.prototype.insertVideoDetails = async function (Video) {
     fs.unlinkSync(filePath);
     return OutputCmd;
 };
-ChiaDatalayer.prototype.getChanelVideos = async function (chanel) {
-    return "Holi";
+ChiaDatalayer.prototype.getChanelVideos = async function (idChanel) {
+    
+    let Videos = [];
+    let OutputCmd = await this.runCommand(`chia data get_keys --id ${idChanel}`);
+    if (OutputCmd.keys !== undefined) {
+        for (let i = 0; i < OutputCmd.keys.length; i++) {
+            let KeyString = this.hexToString(OutputCmd.keys[i].replace("0x",""));
+            KeyString = KeyString.trim();
+            if (KeyString.startsWith("Video")) {
+
+                let VideoOuput = await this.runCommand("chia data get_value --id " + idChanel + " --key " + OutputCmd.keys[i]);
+
+                if (VideoOuput.value !== undefined) {
+                    let Video = JSON.parse(this.hexToString(VideoOuput.value));
+                    Video.Image = this.hexToBase64(Video.Image);
+                    Videos.push(Video);
+                }
+            }
+
+        }
+    }
+    return Videos;
 }
 ChiaDatalayer.prototype.stringToHex = function (text) {
     var hexString = "";

@@ -42,6 +42,10 @@ body {
 .CardChanel {
     text-align: center;
 }
+.CardVideo{
+    text-align: center;
+    cursor: pointer;
+}
 
 /*loading*/
 /* Estilos para el fondo del modal */

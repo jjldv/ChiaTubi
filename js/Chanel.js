@@ -4,17 +4,21 @@ function Chanel(idChanel = null) {
     this.VideoPath = null;
 }
 Chanel.prototype.Init = async function () {
-    let Response = await window.electronAPI.GetChanelVideos(this.Id);
+    util.showLoading("Loading Videos...");
+    let Videos = await window.electronAPI.GetChanelVideos(this.Id);
 
-    return Response;
+    for (let i = 0; i < Videos.length; i++) {
+        this.InsertCardVideo(Videos[i], true);
+    }
+    util.hideLoading();
 }
 Chanel.prototype.AddVideo = async function () {
-    let Video = {Id:null,IdChanel:this.Id,VideoPath:this.VideoPath,ImagePath:this.ImagePath,Name:null,Fee:0};
+    let Video = {Id:null,IdChanel:this.Id,VideoPath:this.VideoPath,Image:this.ImagePath,Name:null,Fee:0};
     Video.Name = document.getElementById('videoName').value;
     Video.Fee = document.getElementById('Fee').value;
 
     // Validar que el nombre no esté vacío y la imagen no esté vacía
-    if (Video.Name === "" || Video.VideoPath === null || Video.ImagePath === null) {
+    if (Video.Name === "" || Video.VideoPath === null || Video.Image === null) {
         alert("Name,Video and Image are required");
         return;
     }
@@ -82,7 +86,7 @@ Chanel.prototype.InsertCardVideo = function (Video, IsVideoConfirmed = false) {
     let CardElement = `
       <div class="col-sm-3" title="Store Id:${Video.Id}">
         <div class="card CardVideo" onclick="AppView.LoadVideo('${Video.Id}')">
-          <img src="${Video.ImagePath}" class="card-img-top" alt="${Video.Name}">
+          <img src="${Video.Image}" class="card-img-top" alt="${Video.Name}">
           <div class="card-body">
             <h5 class="card-title">${Video.Name}</h5>
             <p class="card-text" id="Status_${Video.Id}" style="display:${IsVideoConfirmed ? "none" : "block"}">Pending</p>

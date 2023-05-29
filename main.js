@@ -62,8 +62,8 @@ async function GetChanels(event) {
 
     return Response;
 }
-async function GetChanelVideos(event) {
-    let Response = await chiaDataLayer.getChanelVideos();
+async function GetChanelVideos(event, idChanel) {
+    let Response = await chiaDataLayer.getChanelVideos(idChanel);
 
     return Response;
 }
