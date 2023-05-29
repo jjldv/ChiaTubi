@@ -11,12 +11,17 @@ Home.prototype.SelectFolderToMerge = async function () {
     const uniqueId = Date.now().toString(36) + Math.random().toString(36).substr(2);
     const FileName = `${uniqueId}.mp4`;
     const FolderPath = await window.electronAPI.openFolder();
-    const FilePath = await window.electronAPI.reconstructMP4FromChunks(FolderPath, FileName, 6);
+    const FilePath = await window.electronAPI.reconstructMP4FromChunks(FolderPath, FileName, 39);
     setTimeout(() => {
         this.changeVideoSource(FilePath);
     }, 1000);
 }
-
+Home.prototype.SelectFileToSplit = async function () {
+    this.VideoPath = null;
+    let FilePath = await window.electronAPI.openFile("Mp4 files", "mp4");
+    let FolderOuput = await window.electronAPI.splitFileIntoChunks(FilePath, 10);
+    this.Log(FolderOuput);
+}
 Home.prototype.changeVideoSource = function (newSrc) {
     let player = document.getElementById('my-video');
     player.src = newSrc;

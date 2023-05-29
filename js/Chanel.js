@@ -46,7 +46,7 @@ Chanel.prototype.AddVideo = async function () {
         }
     }
 
-    let InsertVideoDetails = await window.electronAPI.InsertVideoDetails(Video);
+    await window.electronAPI.InsertVideoDetails(Video);
     let IsVideoDetailsConfirmed = false;
 
     while (!IsVideoDetailsConfirmed) {
@@ -59,6 +59,7 @@ Chanel.prototype.AddVideo = async function () {
             IsVideoDetailsConfirmed = true;
         }
     }
+    //await window.electronAPI.InsertVideoFile(Video);
 }
 Chanel.prototype.SelectVideoImage = async function () {
     this.ImagePath = null;
@@ -97,4 +98,13 @@ Chanel.prototype.InsertCardVideo = function (Video, IsVideoConfirmed = false) {
     `;
 
     document.getElementById('VideoList').innerHTML += CardElement;
+}
+Chanel.prototype.LoadVideo = async function (IdVideo) {
+    util.showLoading();
+    let IsLoaded = await util.loadHTMLFile('view/VideoChanel.html')
+    util.hideLoading();
+    if (IsLoaded) {
+        AppView = new VideoChanel(IdVideo);
+        AppView.Init();
+    }
 }

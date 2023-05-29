@@ -43,7 +43,7 @@ ChiaDatalayer.prototype.splitFileIntoChunks = function (file_path, chunk_size) {
         const hexData = chunkData.toString('hex');
 
         // Guarda el fragmento en un archivo separado
-        const chunk_filename = path.join(fileDir, `${fileName}_${chunk_number}.txt`);
+        const chunk_filename = path.join(fileDir, `Part_${chunk_number}.txt`);
         fs.writeFileSync(chunk_filename, hexData);
 
         chunk_number++;
@@ -62,8 +62,8 @@ ChiaDatalayer.prototype.reconstructMP4FromChunks = function (chunk_directory, ou
     const sortedFiles = files
         .filter(file => file.endsWith('.txt'))
         .sort((a, b) => {
-            const aNum = parseInt(path.parse(a).name.split('_')[1]);
-            const bNum = parseInt(path.parse(b).name.split('_')[1]);
+            const aNum = parseInt(a.match(/Part_(\d+)/)[1]);
+            const bNum = parseInt(b.match(/Part_(\d+)/)[1]);
             return aNum - bNum;
         });
 
@@ -76,7 +76,14 @@ ChiaDatalayer.prototype.reconstructMP4FromChunks = function (chunk_directory, ou
         const chunk_data = fs.readFileSync(chunk_filepath, 'utf-8');
 
         // Verificar si el número de fragmento es el esperado
-        const chunkNumber = parseInt(path.parse(file).name.split('_')[1]);
+        const regex = /Part_(\d+)/;
+
+        // Buscar el número de parte en el nombre del archivo
+        const resultado = chunk_filepath.match(regex);
+        const chunkNumber = resultado[1];
+
+
+
         while (expectedChunkNumber < chunkNumber) {
             // Generar datos dummy para los fragmentos faltantes
             const dummyData = Buffer.alloc(this.chunkSize); // Tamaño del chunk dummy (10MB)
@@ -121,8 +128,8 @@ ChiaDatalayer.prototype.runCommand = async function (command) {
     return new Promise((resolve, reject) => {
         exec(command, (error, stdout, stderr) => {
             if (error) {
-                error = this.parseOutput(error);
-                reject(error);
+                error.message = this.parseOutput(error.message);
+                resolve(error.message);
                 return;
             }
             stdout = this.parseOutput(stdout);
@@ -175,6 +182,96 @@ ChiaDatalayer.prototype.getChanels = async function () {
     }
     return Chanels;
 };
+ChiaDatalayer.prototype.sendVideoChunks = async function (Video) {
+    return new Promise(async (resolve, reject) => {
+        try {
+            // Obtiene el tamaño del archivo en bytes
+            const fileSizeInBytes = fs.statSync(Video.VideoPath).size;
+
+            // Calcula el número total de chunks requeridos
+            const chunkSizeInBytes = this.chunkSize;
+            const totalChunks = Math.ceil(fileSizeInBytes / chunkSizeInBytes);
+
+            // Crea un flujo de escritura para el archivo
+
+            // Genera los objetos del array
+            let IsFirst = true;
+            for (let i = 0; i < totalChunks; i++) {
+                const filePath = path.join(__dirname, 'temp', `VideoFile${Video.Id}_Part_${i + 1}.json`);
+                const writeStream = fs.createWriteStream(filePath);
+
+                // Escribe el inicio del archivo JSON
+                writeStream.write('{\n');
+                writeStream.write(`  "id": "${Video.Id}",\n`);
+                writeStream.write(`  "fee": "${Video.Fee}",\n`);
+                writeStream.write('  "changelist": [\n');
+                const chunkData = this.generateChunkData(Video.VideoPath, i);
+                const chunkHex = chunkData.toString('hex');
+
+                const objectDelete = {
+                    action: 'delete',
+                    key: this.stringToHex(`VideoChunk`)
+                };
+                const jsonDelete = JSON.stringify(objectDelete, null, 2); // Usa null y 2 para dar formato legible al JSON
+                writeStream.write(jsonDelete);
+                writeStream.write(',');
+
+                const object = {
+                    action: 'insert',
+                    key: this.stringToHex(`VideoChunk`),
+                    value: this.stringToHex(`Part_${i + 1}|`) + chunkHex,
+                };
+
+                // Convierte el objeto a JSON y lo escribe en el archivo
+                const json = JSON.stringify(object, null, 2); // Usa null y 2 para dar formato legible al JSON
+                writeStream.write(json);
+
+                writeStream.write('\n');
+                // Escribe el cierre del archivo JSON
+                writeStream.write('  ]\n');
+                writeStream.write('}\n');
+
+                // Cierra el flujo de escritura
+                writeStream.end();
+                let IsProcesed = false;
+                if (!IsFirst) {
+                    await this.sleep(10000);
+                }
+                do {
+                    IsFirst = false;
+                    let OutputCmd = await this.runCommand(`chia rpc data_layer batch_update  -j ${filePath}`);
+                    if (OutputCmd.success === true || OutputCmd.error.startsWith("Key already present")) {
+                        IsProcesed = true;
+                        this.log(`Chunk ${i + 1} de ${totalChunks} procesado`);
+                        //await fs.unlinkSync(filePath);
+                    } else {
+                        await this.sleep(10000);
+                    }
+                } while (!IsProcesed);
+
+
+            }
+            resolve(true); // Resuelve la promesa con el nombre del archivo generado
+
+        } catch (error) {
+            this.log(`Error al generar el archivo JSON: ${error}`);
+            reject(null); // Rechaza la promesa con el error
+        }
+    });
+};
+
+
+// Función para generar datos de chunk de prueba (reemplazar con tu lógica para leer y dividir el archivo MP4)
+ChiaDatalayer.prototype.generateChunkData = function (filename, chunkIndex) {
+    // Lee el chunk del archivo
+    const fileDescriptor = fs.openSync(filename, 'r');
+    const buffer = Buffer.alloc(this.chunkSize);
+    const bytesRead = fs.readSync(fileDescriptor, buffer, 0, this.chunkSize, chunkIndex * this.chunkSize);
+    fs.closeSync(fileDescriptor);
+
+    // Retorna el chunk leído
+    return buffer.slice(0, bytesRead);
+}
 
 ChiaDatalayer.prototype.insertChanelDetails = async function (chanel) {
     let Image = await this.processImage(chanel.Image);
@@ -215,14 +312,15 @@ ChiaDatalayer.prototype.insertChanelDetails = async function (chanel) {
     return OutputCmd;
 };
 ChiaDatalayer.prototype.insertVideoDetails = async function (Video) {
-    let Image = await this.processImage(Video.ImagePath);
+    let Image = await this.processImage(Video.Image);
     Image = this.base64ToHex(Image);
     let KeyIdStore = this.stringToHex("Video" + Video.Id);
     let Size = await this.getFileSize(Video.VideoPath);
-    let TotalChunks = this.calculateNumberOfChunks(Size,this.chunkSizeMB);
+    let TotalChunks = this.calculateNumberOfChunks(Size, this.chunkSizeMB);
     let VideoDetails = {
         Name: Video.Name,
         IdChanel: Video.IdChanel,
+        Id: Video.Id,
         Image: Image,
         ChunkSize: this.chunkSizeMB,
         Size: Size,
@@ -246,13 +344,55 @@ ChiaDatalayer.prototype.insertVideoDetails = async function (Video) {
     fs.unlinkSync(filePath);
     return OutputCmd;
 };
+ChiaDatalayer.prototype.insertVideoFile = async function (Video) {
+    let JsonFile = await this.sendVideoChunks(Video);
+
+    return "OK";
+};
+ChiaDatalayer.prototype.getVideoFile = async function (IdVideo) {
+    let Output = await this.runCommand(`chia data get_root_history --id ${IdVideo}`);
+    if (Output.root_history !== undefined && Output.root_history.length > 1) {
+        for (let i = 0; i < Output.root_history.length; i++) {
+            if (Output.root_history[i].root_hash == "0x0000000000000000000000000000000000000000000000000000000000000000")
+                continue;
+            let Parameters = {
+                "id": IdVideo,
+                "key": this.stringToHex(`VideoChunk`),
+                "root_hash": Output.root_history[i].root_hash
+            };
+            const folderPath = path.join(__dirname, 'temp');
+            const filePath = path.join(folderPath, Output.root_history[i].root_hash + '_p.json');
+            const filePathOut = path.join(folderPath, Output.root_history[i].root_hash + '_out.json');
+            const json = JSON.stringify(Parameters, null, 2);
+            fs.writeFileSync(filePath, json);
+            let OutputCmd = await this.runCommand(`chia rpc data_layer get_value -j ${filePath} > ${filePathOut}`);
+            fs.unlinkSync(filePath);
+            let Content = fs.readFileSync(filePathOut, 'utf8');
+            Content = JSON.parse(Content);
+            if (Content.value !== undefined) {
+                Content.value = this.hexToString(Content.value);
+                const indexPipe = Content.value.indexOf("|");
+                const chunkName = Content.value.substring(0, indexPipe).trim();
+                Content.value = Content.value.substring(indexPipe + 1).trim();
+                const chunkPath = path.join(folderPath, IdVideo + '_' + chunkName + '.txt');
+                console.log(chunkName);
+                fs.unlinkSync(filePathOut);
+                fs.writeFileSync(chunkPath, this.stringToHex(Content.value));
+
+            }
+
+        }
+    }
+
+    return "OK";
+};
 ChiaDatalayer.prototype.getChanelVideos = async function (idChanel) {
-    
+
     let Videos = [];
     let OutputCmd = await this.runCommand(`chia data get_keys --id ${idChanel}`);
     if (OutputCmd.keys !== undefined) {
         for (let i = 0; i < OutputCmd.keys.length; i++) {
-            let KeyString = this.hexToString(OutputCmd.keys[i].replace("0x",""));
+            let KeyString = this.hexToString(OutputCmd.keys[i].replace("0x", ""));
             KeyString = KeyString.trim();
             if (KeyString.startsWith("Video")) {
 
@@ -325,6 +465,9 @@ ChiaDatalayer.prototype.hexToBase64 = function (hexString) {
 
 
 ChiaDatalayer.prototype.parseOutput = function (output) {
+    if (output == "") {
+        return {};
+    }
     output = output.replace(/'/g, '"');
     output = output.replace(/'/g, '"');
     output = output.replace(/True/gi, "true")
@@ -335,6 +478,11 @@ ChiaDatalayer.prototype.parseOutput = function (output) {
     if (regex.test(output)) {
         var errorIndex = output.indexOf("ValueError: ");
         output = output.substring(errorIndex + "ValueError: ".length);
+    }
+    regex = /Request failed:/;
+    if (regex.test(output)) {
+        var errorIndex = output.indexOf("Request failed: ");
+        output = output.substring(errorIndex + "Request failed: ".length);
     }
     output = JSON.parse(output);
     return output;
@@ -373,6 +521,10 @@ ChiaDatalayer.prototype.getFileSize = async function (filePath) {
 ChiaDatalayer.prototype.calculateNumberOfChunks = function (fileSizeMB, chunkSizeMB) {
     return Math.ceil(fileSizeMB / chunkSizeMB);
 }
+ChiaDatalayer.prototype.sleep = function (ms) {
+    return new Promise(resolve => setTimeout(resolve, ms));
+}
+
 ChiaDatalayer.prototype.log = function (_data) {
     if (this.logEnabled) {
         console.log(_data);

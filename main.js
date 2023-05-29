@@ -57,6 +57,16 @@ async function InsertVideoDetails(event, Video) {
 
     return Response;
 }
+async function InsertVideoFile(event, Video) {
+    let Response = await chiaDataLayer.insertVideoFile(Video);
+
+    return Response;
+}
+async function GetVideoFile(event, Id) {
+    let Response = await chiaDataLayer.getVideoFile(Id);
+
+    return Response;
+}
 async function GetChanels(event) {
     let Response = await chiaDataLayer.getChanels();
 
@@ -117,6 +127,8 @@ app.whenReady().then(() => {
     ipcMain.handle('InsertChanelDetails', InsertChanelDetails);
     ipcMain.handle('InsertVideoDetails', InsertVideoDetails);
     ipcMain.handle('GetChanelVideos', GetChanelVideos);
+    ipcMain.handle('InsertVideoFile', InsertVideoFile);
+    ipcMain.handle('GetVideoFile', GetVideoFile);
     ipcMain.handle('GetChanels', GetChanels);
     ipcMain.handle('openFolder', FolderOpen);
     ipcMain.handle('splitFileIntoChunks', splitFileIntoChunks);

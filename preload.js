@@ -10,6 +10,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
     IsKeyConfirmed: (idStore,key) => ipcRenderer.invoke('IsKeyConfirmed', idStore, key),
     InsertChanelDetails: (chanel) => ipcRenderer.invoke('InsertChanelDetails', chanel),
     InsertVideoDetails: (Video) => ipcRenderer.invoke('InsertVideoDetails', Video),
+    InsertVideoFile: (Video) => ipcRenderer.invoke('InsertVideoFile', Video),
+    GetVideoFile: (IdVideo) => ipcRenderer.invoke('GetVideoFile', IdVideo),
     GetChanelVideos: (idChanel) => ipcRenderer.invoke('GetChanelVideos',idChanel),
     AddVideo: (video) => ipcRenderer.invoke('AddVideo',video),
     openFolder: () => ipcRenderer.invoke('openFolder'),
