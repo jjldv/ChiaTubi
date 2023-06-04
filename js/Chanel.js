@@ -48,21 +48,38 @@ Chanel.prototype.AddVideo = async function () {
         return;
     }
 
+
     let Response = await window.electronAPI.CreateStore(Video.Fee);
+    if (Response.status === "error") {
+        util.hideLoading();
+        alert(Response.message);
+        return;
+    }
+    console.log(Response);
     Video.Id = Response.id;
-    
+    let CreateTemp = await window.electronAPI.CreateTempFileStore(Video,"Video");
+    console.log(CreateTemp);
     this.InsertCardVideo(Video);
+    
+    const modal = document.getElementById("AddVideoModal");
+
+    modal.style.display = "none";
+    util.hideLoading();
+    await util.sleep(5000);
+    this.ConfirmVideo(Video);
+}
+Chanel.prototype.ConfirmVideo = async function (Video) {
 
     let IsVideoStoreConfirmed = false;
-    await util.sleep(5000);
-
+    const element = document.getElementById(`Status_${Video.Id}`);
     while (!IsVideoStoreConfirmed) {
         let RIsConfirmed = await window.electronAPI.IsStoreConfirmed(Video.Id);
         console.log(RIsConfirmed);
         if (RIsConfirmed.hash === undefined) {
             await util.sleep(1000);
         } else {
-            document.getElementById(`Status_${Response.id}`).innerHTML = "Store Created";
+            if(element)
+                element.innerHTML = "Store Created"
             IsVideoStoreConfirmed = true;
         }
     }
@@ -76,7 +93,8 @@ Chanel.prototype.AddVideo = async function () {
         if (RIsConfirmed.error !== undefined) {
             await util.sleep(1000);
         } else {
-            document.getElementById(`Status_${Response.id}`).innerHTML = "Procesing video";
+            if(element)
+                element.innerHTML = "Procesing video";
             IsVideoDetailsConfirmed = true;
         }
     }

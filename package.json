@@ -2,7 +2,7 @@
   "name": "chiatube",
   "version": "1.0.0",
   "description": "ChiaTube DataLayer POC",
-  "main": "main.js",
+  "main": "backjs\\main.js",
   "scripts": {
     "start": "electron-forge start",
     "test": "echo \"Error: no test specified\" && exit 1",

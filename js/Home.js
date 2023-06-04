@@ -12,6 +12,10 @@ Home.prototype.Init = async function () {
         document.getElementById('preview').src = "img/imgplaceholder.png";
         this.ChanelImagePath = null;
     })
+    let ModalSubscribeChanel = new bootstrap.Modal(document.getElementById('SubscribeChanelModal'));
+    ModalSubscribeChanel._element.addEventListener('hidden.bs.modal', function () {
+        document.getElementById('IdChanelSubscribe').value = '';
+    })
     var btnCreateChanelModal = document.getElementById('BtnCreateChanelModal');
     var btnSubscribeChanelModal = document.getElementById('BtnSubscribeChanelModal');
     var btnAddVideoModal = document.getElementById('BtnAddVideoModal');
@@ -51,7 +55,7 @@ Home.prototype.CreateChanel = async function () {
     }
     console.log(Response);
     Chanel.Id = Response.id;
-    let CreateTemp = await window.electronAPI.CreateTempFileStore(Chanel);
+    let CreateTemp = await window.electronAPI.CreateTempFileStore(Chanel,"Chanel");
     console.log(CreateTemp);
     this.InsertCardChanel(Chanel);
     const modal = document.getElementById("CreateChanelModal");
@@ -105,7 +109,7 @@ Home.prototype.ConfirmChanel = async function (Chanel) {
             IsChanelConfirmed = true;
         }
     }
-    let DeleteTemp = await window.electronAPI.DeleteTempFileStore(Chanel);
+    let DeleteTemp = await window.electronAPI.DeleteTempFileStore(Chanel,"Chanel");
     console.log(DeleteTemp);
 }
 
@@ -156,9 +160,10 @@ Home.prototype.SubscribeChanel = async function () {
         alert("Id is required");
         return;
     }
-    var SubscribeChanelModal = new bootstrap.Modal(document.getElementById('SubscribeChanelModal'));
 
-    SubscribeChanelModal.hide();
+    const modal = document.getElementById("SubscribeChanelModal");
+
+    modal.style.display = "none";
     util.showLoading("Subscribing...");
     let Response = await window.electronAPI.SubscribeChanel(IdChanel);
     util.hideLoading();

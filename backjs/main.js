@@ -106,8 +106,8 @@ app.whenReady().then(() => {
     ipcMain.handle('PrepareVideo', PrepareVideo);
     ipcMain.handle('StopPrepareVideo', StopPrepareVideo);
     ipcMain.handle('PercentageLoaded', (event)=> {return VFile.percentageLoaded();});
-    ipcMain.handle('CreateTempFileStore',(event, Chanel)=>{return chiaDataLayer.createTempFileStore(Chanel)})
-    ipcMain.handle('DeleteTempFileStore',(event, Chanel) =>{return chiaDataLayer.deleteTempFileStore(Chanel);})
+    ipcMain.handle('CreateTempFileStore',(event, Chanel,Type)=>{return chiaDataLayer.createTempFileStore(Chanel,Type)})
+    ipcMain.handle('DeleteTempFileStore',(event, Chanel,Type) =>{return chiaDataLayer.deleteTempFileStore(Chanel,Type);})
     ipcMain.handle('GetChanels', (event)=> {return chiaDataLayer.getChanels();});
     ipcMain.handle('IsChiaInstalled', ()=>{return chiaDataLayer.isChiaInstalled()});
     ipcMain.handle('UnsubscribeChanel', (event,IdChanel)=>{ return chiaDataLayer.unsubscribeChanel(IdChanel) });
