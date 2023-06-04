@@ -5,87 +5,74 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="stylesheet" href="node_modules/bootstrap/dist/css/bootstrap.min.css">
-    <link href="node_modules/video.js/dist/video-js.min.css" rel="stylesheet">
-    <link href="https://unpkg.com/video.js@7/dist/video-js.min.css" rel="stylesheet" />
-    <link href="https://unpkg.com/@videojs/themes@1/dist/city/index.css" rel="stylesheet" />
     <link href="css/style.css" rel="stylesheet" />
-    <title>Reproductor de Video</title>
+    <title>ChiaTubi</title>
 
 </head>
 
 <body>
-    <div id="AppView">
-        <div class="container mt-5">
-            <div class="row justify-content-center">
-                <div class="col-lg-8">
-                    <div class="video-container">
-                        <video id="my-video" class="video-js vjs-theme-city" controls preload="auto" width="100%"
-                            height="100%">
-                        </video>
-                    </div>
-                </div>
+    <div class="wrapper">
+        <!-- HEADER -->
+        <header>
+            <div class="netflixLogo">
+                <a id="logo" href="#home" onclick="util.GoHome();"><img src="img/ChiaTubi.png" alt="ChiaTubi"></a>
             </div>
-            <br>
-            <div class="row">
-                <div class="col-lg-12" style="text-align: center;">
-                    <button class="btn btn-primary" onclick="AppView.SelectFileToSplit()">Select Video File to Split (mp4)</button>
-                </div>
+            <nav class="main-nav">
+                <a href="#AppView" onclick="util.GoHome();">Home</a>
+                <a href="#"  id="BtnReturnToChanel" ></a>
+            </nav>
+            <nav class="sub-nav">
+                <a href="#" class="BtnHead" id="BtnSubscribeChanelModal" data-bs-toggle="modal" data-bs-target="#SubscribeChanelModal">Subscribe Chanel</a>
+                <a href="#" class="BtnHead" id="BtnCreateChanelModal" data-bs-toggle="modal" data-bs-target="#CreateChanelModal">Create Chanel</a>
+                <a href="#" class="BtnHead" id="BtnAddVideoModal" data-bs-toggle="modal" data-bs-target="#AddVideoModal">Add Video</a>
+            </nav>
+        </header>
+        <!-- END OF HEADER -->
+        <!-- MAIN CONTAINER -->
+        <section id="AppView" class="main-container">
+            <div class="containerLanding">
+                <img src="img/ChiaTubi.png" alt="Imagen">
+              </div>
+        </section>
+        <!-- LINKS -->
+        <section class="link">
+            <div class="logos">
+                
             </div>
-            <br>
-            <div class="row">
-                <div class="col-lg-12" style="text-align: center;">
-                    <button class="btn btn-primary" onclick="AppView.SelectFolderToMerge()">Select Folder to Merge</button>
-                </div>
+            <div class="sub-links">
+                <ul>
+                   
+                </ul>
             </div>
-            <br>
-            <div class="row" id="ConainerCreateChanel">
-                <div class="col-lg-12" style="text-align: center;">
-                    <img id="preview" src="img/imgplaceholder.png" alt="Image preview..." onclick="AppView.SelectChanelImage()">
-                </div>
-                <div class="col-lg-12" style="text-align: center;">
-                    <button class="btn btn-primary" onclick="AppView.SelectChanelImage()">Select Chanel Image</button>
-                </div>
-                <div class="col-lg-12" style="text-align: center;">
-                    <label for="chanelName">Chanel Name</label>
-                    <input type="text" id="chanelName" placeholder="Chanel Name" class="form-control">
-                </div>
-                <div class="col-lg-12" style="text-align: center;">
-                    <label for="Fee">Fee in XCH</label>
-                    <input type="number" id="Fee" placeholder="Fee" value="0" class="form-control">
-                </div>
-            </div>
-            <br>
-            <div class="row">
-                <div class="col-lg-12" style="text-align: center;">
-                    <button class="btn btn-primary" onclick="AppView.CreateChanel()">Create Chanel (1 mojo)</button>
-                </div>
-            </div>
-            <br>
-            <div class="row" id="OwnedStores">
-    
-            </div>
-    
-        </div>
-        <br>
-        <br>
-        <br>
-        <br>
-        <br>
-    </div>
-    <script src="node_modules/video.js/dist/video.min.js"></script>
-    <script src="js/Home.js"></script>
-    <script src="js/Chanel.js"></script>
-    <script src="js/VideoChanel.js"></script>
-    <script src="js/Utils.js"></script>
-    <script>
-        let AppView = new Home();
-        let util = new Utils();
-        window.addEventListener('load', function () {
-            //AppView.GoHome();
-            AppView.LoadChanel("91748ea280e4580479153f818d11b679e6f4c949baf51fc6e9fbd9883e8caf0b");
-        });
+        </section>
+        <!-- END OF LINKS -->
 
-    </script>
+        <!-- FOOTER -->
+        <footer>
+            <p>&copy 2023 ChiaTubi NOT Inc</p>
+            <p>MrDennis</p>
+        </footer>
+
+        <script src="node_modules/bootstrap/dist/js/bootstrap.bundle.js"></script>
+        <script src="js/Home.js"></script>
+        <script src="js/Chanel.js"></script>
+        <script src="js/VideoChanel.js"></script>
+        <script src="js/Utils.js"></script>
+        <script>
+            let AppView = {};
+            let util = new Utils();
+            window.addEventListener('load', async  ()=> {
+                let IsChiaInstalled = await window.electronAPI.IsChiaInstalled();
+                console.log(IsChiaInstalled);
+                if (IsChiaInstalled.status !== undefined && IsChiaInstalled.status === "success") {
+                    util.GoHome();
+                    return;
+                } 
+                if(IsChiaInstalled.status !== undefined && IsChiaInstalled.status === "error"){
+                    alert(IsChiaInstalled.message);
+                    return;
+                }
+            });
+
+        </script>
 </body>
-
-</html>

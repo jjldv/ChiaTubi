@@ -36,11 +36,16 @@ Utils.prototype.hideLoading = function () {
     if (backdrop) {
         document.body.removeChild(backdrop);
     }
+    const elements = document.getElementsByClassName("modal-backdrop");
+    while (elements.length > 0) {
+        elements[0].parentNode.removeChild(elements[0]);
+    }
 }
 Utils.prototype.sleep = function (ms) {
     return new Promise(resolve => setTimeout(resolve, ms));
 }
 Utils.prototype.loadHTMLFile = async function (filePath, targetElementId = 'AppView') {
+    await window.electronAPI.StopPrepareVideo();
     return new Promise((resolve, reject) => {
         fetch(filePath)
             .then(response => response.text())
@@ -58,4 +63,23 @@ Utils.prototype.loadHTMLFile = async function (filePath, targetElementId = 'AppV
                 resolve(false);
             });
     });
+}
+Utils.prototype.GoHome = async function () {
+    util.showLoading();
+    let IsLoaded = await util.loadHTMLFile('view/Home.html')
+    util.hideLoading();
+    if (IsLoaded) {
+        AppView = new Home();
+        AppView.Init();
+    }
+}
+Utils.prototype.GoChanel = async function (ChanelId, ChanelName) {
+    BtnReturnToChanel.innerHTML = "";
+    util.showLoading();
+    let IsLoaded = await util.loadHTMLFile('view/Chanel.html')
+    util.hideLoading();
+    if (IsLoaded) {
+        AppView = new Chanel(ChanelId, ChanelName);
+        AppView.Init();
+    }
 }

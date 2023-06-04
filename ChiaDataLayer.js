@@ -8,7 +8,7 @@ const {
 } = require('electron');
 
 function ChiaDatalayer() {
-    this.chunkSizeMB = 10; //in MB
+    this.chunkSizeMB = 2; //in MB
     this.chunkSize = this.chunkSizeMB * 1024 * 1024; //in MB
     this.logEnabled = true;
 }
@@ -113,6 +113,76 @@ ChiaDatalayer.prototype.reconstructMP4FromChunks = function (chunk_directory, ou
     return output_file;
 };
 
+ChiaDatalayer.prototype.unsubscribeChanel = async function (IdChanel) {
+    let OutputCmd = await this.runCommand(`chia rpc data_layer unsubscribe "{\\"id\\":\\"${IdChanel}\\"}"`);
+    if (OutputCmd.success !== undefined && OutputCmd.success === true) {
+        this.removeStoreFiles(IdChanel);
+        this.removeChanelFromLocalFile(IdChanel);
+    }
+    return OutputCmd;
+}
+ChiaDatalayer.prototype.subscribeChanel = async function (IdChanel) {
+    let OutputCmd = await this.runCommand(`chia rpc data_layer subscribe  "{\\"id\\":\\"${IdChanel}\\"}"`);
+    if (OutputCmd.success !== undefined && OutputCmd.success === true) {
+        let Try = true;
+        while (Try) {
+            let Response = await this.isKeyConfirmed(IdChanel, "IsChanel");
+            if (Response.error !== undefined) {
+                await this.sleep(1000);
+                continue;
+            }
+            let Chan = await this.getChanelFromChain(IdChanel);
+            if (Chan !== undefined) {
+                this.insertToLocalChanelFile(Chan);
+                Try = false;
+            }
+        }
+    }
+    return OutputCmd;
+}
+ChiaDatalayer.prototype.removeChanelFromLocalFile = function (idStore) {
+    const filePath = path.join(__dirname, 'temp', 'Chanels.json');
+
+    try {
+        const data = fs.readFileSync(filePath, 'utf8');
+
+        const jsonData = JSON.parse(data);
+
+        const filteredData = jsonData.filter(obj => obj.Id !== idStore);
+
+        // Convertir el objeto JavaScript filtrado de nuevo a JSON
+        const updatedData = JSON.stringify(filteredData, null, 2);
+
+        // Guardar el archivo actualizado de forma síncrona
+        fs.writeFileSync(filePath, updatedData, 'utf8');
+
+        console.log(`Archivo ${filePath} actualizado.`);
+    } catch (err) {
+        console.error(`Error al procesar el archivo ${filePath}: ${err}`);
+    }
+};
+ChiaDatalayer.prototype.removeStoreFiles = function (idStore) {
+    const chiaDataPath = path.join(process.env.USERPROFILE, '.chia', 'mainnet', 'data_layer', 'db', 'server_files_location_mainnet');
+
+    if (fs.existsSync(chiaDataPath)) {
+        try {
+            const files = fs.readdirSync(chiaDataPath);
+
+            files.forEach(file => {
+                if (file.includes(idStore)) {
+                    const filePath = path.join(chiaDataPath, file);
+
+                    fs.unlinkSync(filePath);
+                    console.log(`Archivo ${filePath} eliminado.`);
+                }
+            });
+        } catch (err) {
+            console.error(`Error al leer o eliminar archivos en ${chiaDataPath}: ${err}`);
+        }
+    } else {
+        console.error(`La ruta ${chiaDataPath} no existe.`);
+    }
+};
 ChiaDatalayer.prototype.convertToValidFolderName = function (fileName) {
     const invalidCharsRegex = /[^a-zA-Z0-9]/g;
     const replacementChar = "-"; // Carácter a utilizar como reemplazo para los caracteres no permitidos
@@ -122,6 +192,10 @@ ChiaDatalayer.prototype.convertToValidFolderName = function (fileName) {
 
     return validName.trim(); // Eliminar espacios en blanco al principio y al final del nombre
 };
+
+const {
+    spawn
+} = require('child_process');
 
 ChiaDatalayer.prototype.runCommand = async function (command) {
     this.log(command);
@@ -139,13 +213,13 @@ ChiaDatalayer.prototype.runCommand = async function (command) {
 };
 
 ChiaDatalayer.prototype.createStore = async function (fee) {
-    let OutputCmd = await this.runCommand("chia data create_data_store -m " + fee);
+    let OutputCmd = await this.runCommand(`chia rpc data_layer create_data_store "{\\"fee\\":\\"${fee}\\"}"`);
 
     return OutputCmd;
 };
 
-ChiaDatalayer.prototype.isStoreConfirmed = async function (idChanel) {
-    let OutputCmd = await this.runCommand("chia data get_root --id " + idChanel);
+ChiaDatalayer.prototype.isStoreConfirmed = async function (idStore) {
+    let OutputCmd = await this.runCommand("chia data get_root --id " + idStore);
     return OutputCmd;
 };
 
@@ -154,37 +228,85 @@ ChiaDatalayer.prototype.isKeyConfirmed = async function (idStore, key) {
     let OutputCmd = await this.runCommand("chia data get_value --id " + idStore + " --key " + KeyHex);
     return OutputCmd;
 };
-
-ChiaDatalayer.prototype.getChanels = async function () {
+ChiaDatalayer.prototype.getChanelsFromChain = async function () {
     let Chanels = [];
-    let KeyIsChanel = this.stringToHex("IsChanel");
-    let KeyName = this.stringToHex("Name");
-    let KeyImage = this.stringToHex("Image");
+
     let OutputCmd = await this.runCommand("chia data get_subscriptions");
     if (OutputCmd.store_ids !== undefined) {
         for (let i = 0; i < OutputCmd.store_ids.length; i++) {
-            let OutputIsChanel = await this.runCommand("chia data get_value --id " + OutputCmd.store_ids[i] + " --key " + KeyIsChanel);
-            if (OutputIsChanel.value === undefined)
-                continue;
-
-            let OuputName = await this.runCommand("chia data get_value --id " + OutputCmd.store_ids[i] + " --key " + KeyName);
-            let OuputImage = await this.runCommand("chia data get_value --id " + OutputCmd.store_ids[i] + " --key " + KeyImage);
-            if (OuputName.value !== undefined && OuputImage.value !== undefined) {
-                let Chan = {
-                    Name: this.hexToString(OuputName.value),
-                    Image: this.hexToBase64(OuputImage.value),
-                    Id: OutputCmd.store_ids[i]
-                };
-                Chanels.push(Chan);
+            let idStore = OutputCmd.store_ids[i];
+            let chanel = await this.getChanelFromChain(idStore);
+            if (chanel !== null) {
+                Chanels.push(chanel);
             }
 
         }
     }
+    if (Chanels.length > 0) {
+        const filePath = path.join(__dirname, 'temp', `Chanels.json`);
+        const writeStream = fs.createWriteStream(filePath);
+        writeStream.write(JSON.stringify(Chanels, null, 2));
+    }
     return Chanels;
+}
+ChiaDatalayer.prototype.getChanelFromChain = async function (idStore) {
+    let KeyIsChanel = this.stringToHex("IsChanel");
+    let KeyName = this.stringToHex("Name");
+    let KeyImage = this.stringToHex("Image");
+    let OutputIsChanel = await this.runCommand("chia data get_value --id " + idStore + " --key " + KeyIsChanel);
+    if (OutputIsChanel.value === undefined)
+        return null;
+
+    let OuputName = await this.runCommand("chia data get_value --id " + idStore + " --key " + KeyName);
+    let OuputImage = await this.runCommand("chia data get_value --id " + idStore + " --key " + KeyImage);
+    if (OuputName.value !== undefined && OuputImage.value !== undefined) {
+        let Chan = {
+            Name: this.hexToString(OuputName.value),
+            Image: this.hexToBase64(OuputImage.value),
+            Id: idStore
+        };
+        return Chan;
+    }
+    return null;
+}
+ChiaDatalayer.prototype.getChanels = async function (_fromChain = false) {
+    const filePath = path.join(__dirname, 'temp', 'Chanels.json');
+
+    if (_fromChain || !fs.existsSync(filePath)) {
+        return this.getChanelsFromChain();
+    }
+    const data = fs.readFileSync(filePath, 'utf8');
+    const Chanels = JSON.parse(data);
+    return Chanels;
+
+};
+ChiaDatalayer.prototype.getChanelsPending = async function () {
+    const folderPath = path.join(__dirname, 'temp', 'Pending');
+
+    const fileNames = fs.readdirSync(folderPath);
+    const jsonFiles = [];
+
+    fileNames.forEach((fileName) => {
+        const filePath = path.join(folderPath, fileName);
+        const fileContent = fs.readFileSync(filePath, 'utf-8');
+
+        try {
+            const jsonData = JSON.parse(fileContent);
+            jsonFiles.push(jsonData);
+        } catch (error) {
+            console.error(`Error parsing JSON file: ${filePath}`);
+            console.error(error);
+        }
+    });
+
+    return jsonFiles;
+
 };
 ChiaDatalayer.prototype.sendVideoChunks = async function (Video) {
     return new Promise(async (resolve, reject) => {
         try {
+            const directoryPath = path.join(__dirname, 'temp');
+            const pattern = `VideoFile${Video.Id}_Part_*.json`; //to delete
             // Obtiene el tamaño del archivo en bytes
             const fileSizeInBytes = fs.statSync(Video.VideoPath).size;
 
@@ -192,12 +314,16 @@ ChiaDatalayer.prototype.sendVideoChunks = async function (Video) {
             const chunkSizeInBytes = this.chunkSize;
             const totalChunks = Math.ceil(fileSizeInBytes / chunkSizeInBytes);
 
+
+            let Output = await this.runCommand(`chia data get_root_history --id ${Video.Id}`);
+            let Index2Continue = Output.root_history.length - 1;
+
             // Crea un flujo de escritura para el archivo
 
             // Genera los objetos del array
             let IsFirst = true;
-            for (let i = 0; i < totalChunks; i++) {
-                const filePath = path.join(__dirname, 'temp', `VideoFile${Video.Id}_Part_${i + 1}.json`);
+            for (let i = Index2Continue; i < totalChunks; i++) {
+                const filePath = path.join(directoryPath, `VideoFile${Video.Id}_Part_${i + 1}.json`);
                 const writeStream = fs.createWriteStream(filePath);
 
                 // Escribe el inicio del archivo JSON
@@ -311,6 +437,37 @@ ChiaDatalayer.prototype.insertChanelDetails = async function (chanel) {
     fs.unlinkSync(filePath);
     return OutputCmd;
 };
+ChiaDatalayer.prototype.getChunk = async function (IdVideo, Part, TotalChunks) {
+    let Output = await this.runCommand(`chia data get_root_history --id ${IdVideo}`);
+    if (Output.root_history !== undefined && Output.root_history.length - 1 >= Part) {
+        let Parameters = {
+            "id": IdVideo,
+            "key": this.stringToHex(`VideoChunk`),
+            "root_hash": Output.root_history[Part].root_hash
+        };
+        const folderPath = path.join(__dirname, 'temp', "CurrentPlayer");
+        const filePath = path.join(folderPath, Output.root_history[Part].root_hash + '_Part' + Part + '_p.json');
+        const filePathOut = path.join(folderPath, Output.root_history[Part].root_hash + '_Part' + Part + '_out.json');
+        const json = JSON.stringify(Parameters, null, 2);
+        fs.writeFileSync(filePath, json);
+        let OutputCmd = await this.runCommand(`chia rpc data_layer get_value -j ${filePath} > ${filePathOut}`);
+        fs.unlinkSync(filePath);
+        let Content = fs.readFileSync(filePathOut, 'utf8');
+        Content = JSON.parse(Content);
+        fs.unlinkSync(filePathOut);
+        if (Content.value !== undefined) {
+            Content.value = this.hexToString(Content.value);
+            const indexPipe = Content.value.indexOf("|");
+            const chunkName = Content.value.substring(0, indexPipe).trim();
+            Content.value = Content.value.substring(indexPipe + 1).trim();
+            console.log(`Chunk ${Part} ${chunkName} de ${TotalChunks} obtenido`);
+            return this.stringToHex(Content.value);
+
+        }
+    }
+    return null;
+}
+
 ChiaDatalayer.prototype.insertVideoDetails = async function (Video) {
     let Image = await this.processImage(Video.Image);
     Image = this.base64ToHex(Image);
@@ -347,7 +504,10 @@ ChiaDatalayer.prototype.insertVideoDetails = async function (Video) {
 ChiaDatalayer.prototype.insertVideoFile = async function (Video) {
     let JsonFile = await this.sendVideoChunks(Video);
 
-    return "OK";
+    return {
+        status: true,
+        message: "Inserted"
+    };
 };
 ChiaDatalayer.prototype.getVideoFile = async function (IdVideo) {
     let Output = await this.runCommand(`chia data get_root_history --id ${IdVideo}`);
@@ -386,8 +546,7 @@ ChiaDatalayer.prototype.getVideoFile = async function (IdVideo) {
 
     return "OK";
 };
-ChiaDatalayer.prototype.getChanelVideos = async function (idChanel) {
-
+ChiaDatalayer.prototype.getChanelVideosFromChain = async function (idChanel) {
     let Videos = [];
     let OutputCmd = await this.runCommand(`chia data get_keys --id ${idChanel}`);
     if (OutputCmd.keys !== undefined) {
@@ -407,6 +566,23 @@ ChiaDatalayer.prototype.getChanelVideos = async function (idChanel) {
 
         }
     }
+    if (Videos.length > 0) {
+
+        const filePath = path.join(__dirname, 'temp', `Chanel_${idChanel}.json`);
+        const writeStream = fs.createWriteStream(filePath);
+        writeStream.write(JSON.stringify(Videos, null, 2));
+    }
+    return Videos;
+}
+
+ChiaDatalayer.prototype.getChanelVideos = async function (idChanel, _fromChain = false) {
+    const filePath = path.join(__dirname, 'temp', 'Chanel_' + idChanel + '.json');
+
+    if (_fromChain || !fs.existsSync(filePath)) {
+        return this.getChanelVideosFromChain(idChanel);
+    }
+    const data = fs.readFileSync(filePath, 'utf8');
+    const Videos = JSON.parse(data);
     return Videos;
 }
 ChiaDatalayer.prototype.stringToHex = function (text) {
@@ -465,27 +641,42 @@ ChiaDatalayer.prototype.hexToBase64 = function (hexString) {
 
 
 ChiaDatalayer.prototype.parseOutput = function (output) {
-    if (output == "") {
-        return {};
+    try {
+
+        if (output == "") {
+            return {};
+        }
+        if (output.includes("Cannot connect to host") || output.includes("Check if data layer rpc is running")) {
+            return {
+                status: "error",
+                message: "Cannot connect to DataLayer"
+            };
+        }
+        output = output.replace(/'/g, '"');
+        output = output.replace(/'/g, '"');
+        output = output.replace(/True/gi, "true")
+        output = output.replace(/False/gi, "false")
+        output = output.replace(/None/gi, '"None"')
+        //this.log(output);
+        let regex = /ValueError:/;
+        if (regex.test(output)) {
+            var errorIndex = output.indexOf("ValueError: ");
+            output = output.substring(errorIndex + "ValueError: ".length);
+        }
+        regex = /Request failed:/;
+        if (regex.test(output)) {
+            var errorIndex = output.indexOf("Request failed: ");
+            output = output.substring(errorIndex + "Request failed: ".length);
+        }
+        output = JSON.parse(output);
+        return output;
+    } catch (error) {
+        this.log(error);
+        return {
+            status: "error",
+            message: error.message
+        };
     }
-    output = output.replace(/'/g, '"');
-    output = output.replace(/'/g, '"');
-    output = output.replace(/True/gi, "true")
-    output = output.replace(/False/gi, "false")
-    output = output.replace(/None/gi, '"None"')
-    this.log(output);
-    let regex = /ValueError:/;
-    if (regex.test(output)) {
-        var errorIndex = output.indexOf("ValueError: ");
-        output = output.substring(errorIndex + "ValueError: ".length);
-    }
-    regex = /Request failed:/;
-    if (regex.test(output)) {
-        var errorIndex = output.indexOf("Request failed: ");
-        output = output.substring(errorIndex + "Request failed: ".length);
-    }
-    output = JSON.parse(output);
-    return output;
 };
 
 ChiaDatalayer.prototype.processImage = async function (FilePath) {
@@ -512,12 +703,96 @@ ChiaDatalayer.prototype.processImage = async function (FilePath) {
         return imagenBase64;
     }
 };
+
+ChiaDatalayer.prototype.createTempFileStore = async function (Chanel) {
+
+    try {
+        const directoryPath = path.join(__dirname, 'temp', 'Pending');
+        const filePath = path.join(directoryPath, Chanel.Id + '.json');
+        const data = JSON.stringify(Chanel);
+
+        await fs.promises.writeFile(filePath, data);
+        return {
+            status: "success",
+            message: "File created"
+        };
+    } catch (error) {
+        return {
+            status: "error",
+            message: error.message
+        };
+    }
+
+};
+ChiaDatalayer.prototype.insertToLocalChanelFile = async function (Chanel) {
+    const filePath = path.join(__dirname, 'temp', 'Chanels.json');
+    const fileContent = fs.readFileSync(filePath, 'utf-8');
+    const data = JSON.parse(fileContent);
+    data.push(Chanel);
+    const jsonActualizado = JSON.stringify(data, null, 2);
+    fs.writeFileSync(filePath, jsonActualizado, 'utf-8');
+}
+ChiaDatalayer.prototype.deleteTempFileStore = async function (Chanel) {
+    const filePath = path.join(__dirname, 'temp', 'Pending', Chanel.Id + '.json');
+    try {
+        await fs.promises.unlink(filePath);
+        let ChainChanel = await this.getChanelFromChain(Chanel.Id);
+        if (ChainChanel != null) {
+            this.insertToLocalChanelFile(ChainChanel);
+        }
+        return {
+            status: "success",
+            message: "File created"
+        };
+    } catch (error) {
+        return {
+            status: "error",
+            message: error.message
+        };
+    }
+}
+
 ChiaDatalayer.prototype.getFileSize = async function (filePath) {
     const stats = fs.statSync(filePath);
     const fileSizeInBytes = stats.size;
     const fileSizeInMB = fileSizeInBytes / (1024 * 1024);
     return fileSizeInMB;
 }
+ChiaDatalayer.prototype.isChiaInstalled = function () {
+    try {
+        // Check if the "chia" command is active
+        execSync('chia --version');
+        console.log('The "chia" command is active.');
+
+        return {
+            status: 'success',
+            message: 'The "chia" command is active.'
+        };
+    } catch (error) {
+        console.error(`The "chia" command is not active: ${error.message}`);
+
+        // Check if the path exists
+        const chiaPath = path.join(process.env.LOCALAPPDATA, 'Programs', 'Chia', 'resources', 'app.asar.unpacked', 'daemon');
+        try {
+            fs.accessSync(chiaPath, fs.constants.F_OK);
+            process.env.PATH += path.delimiter + chiaPath;
+            console.log(`The path ${chiaPath} has been added to the environment variables.`);
+
+            return {
+                status: 'success',
+                message: `The "chia" command is not active, but the path ${chiaPath} has been added to the environment variables.`
+            };
+        } catch (err) {
+            console.error(`The path ${chiaPath} does not exist.`);
+
+            return {
+                status: 'error',
+                message: `The "chia" command is not active and the path ${chiaPath} does not exist.`
+            };
+        }
+    }
+};
+
 ChiaDatalayer.prototype.calculateNumberOfChunks = function (fileSizeMB, chunkSizeMB) {
     return Math.ceil(fileSizeMB / chunkSizeMB);
 }

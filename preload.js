@@ -2,9 +2,9 @@
 const { contextBridge, ipcRenderer } = require('electron')
 
 contextBridge.exposeInMainWorld('electronAPI', {
-    setTitle: (title) => ipcRenderer.send('set-title', title),
     openFile: (title,extensions) => ipcRenderer.invoke('openFile',title,extensions),
     GetChanels: () => ipcRenderer.invoke('GetChanels'),
+    GetChanelsPending: () => ipcRenderer.invoke('GetChanelsPending'),
     CreateStore: (Fee) => ipcRenderer.invoke('CreateStore',Fee),
     IsStoreConfirmed: (idStore) => ipcRenderer.invoke('IsStoreConfirmed', idStore),
     IsKeyConfirmed: (idStore,key) => ipcRenderer.invoke('IsKeyConfirmed', idStore, key),
@@ -12,6 +12,15 @@ contextBridge.exposeInMainWorld('electronAPI', {
     InsertVideoDetails: (Video) => ipcRenderer.invoke('InsertVideoDetails', Video),
     InsertVideoFile: (Video) => ipcRenderer.invoke('InsertVideoFile', Video),
     GetVideoFile: (IdVideo) => ipcRenderer.invoke('GetVideoFile', IdVideo),
+    GetChunk: (IdVideo,ChunkNumber,TotalChunks) => ipcRenderer.invoke('GetChunk', IdVideo,ChunkNumber,TotalChunks),
+    PrepareVideo: (IdVideo,TotalChunks,Size) => ipcRenderer.invoke('PrepareVideo', IdVideo,TotalChunks,Size),
+    UnsubscribeChanel: (IdChanel) => ipcRenderer.invoke('UnsubscribeChanel', IdChanel),
+    SubscribeChanel: (IdChanel) => ipcRenderer.invoke('SubscribeChanel', IdChanel),
+    IsChiaInstalled: () => ipcRenderer.invoke('IsChiaInstalled'),
+    StopPrepareVideo: () => ipcRenderer.invoke('StopPrepareVideo'),
+    PercentageLoaded: () => ipcRenderer.invoke('PercentageLoaded'),
+    CreateTempFileStore: (Chanel) => ipcRenderer.invoke('CreateTempFileStore', Chanel),
+    DeleteTempFileStore: (Chanel) => ipcRenderer.invoke('DeleteTempFileStore', Chanel),
     GetChanelVideos: (idChanel) => ipcRenderer.invoke('GetChanelVideos',idChanel),
     AddVideo: (video) => ipcRenderer.invoke('AddVideo',video),
     openFolder: () => ipcRenderer.invoke('openFolder'),

@@ -1,45 +1,7 @@
-<div class="container mt-5">
-    <div class="row">
-        <div class="col-lg-12" style="text-align: center;">
-            <button class="btn btn-primary" onclick="AppView.GoHome()">Home</button>
-        </div>
-    </div>
-    <br>
-    <div class="row" id="ConainerCreateChanel">
-        <div class="col-lg-12" style="text-align: center;">
-            <img id="preview" src="img/imgplaceholder.png" alt="Image preview..." onclick="AppView.SelectVideoImage()">
-        </div>
-        <div class="col-lg-12" style="text-align: center;">
-            <button class="btn btn-primary" onclick="AppView.SelectVideoImage()">Select Video Image</button>
-        </div>
-        <div class="col-lg-12" style="text-align: center;">
-            <label for="videoName">Video Name</label>
-            <input type="text" id="videoName" placeholder="Video Name" class="form-control">
-        </div>
-        <div class="col-lg-12" style="text-align: center;">
-            <label for="Fee">Fee in XCH</label>
-            <input type="number" id="Fee" placeholder="Fee" value="0" class="form-control">
-        </div>
-    </div>
-    <br>
-    <div class="row">
-        <div class="col-lg-12" style="text-align: center;">
-            <button class="btn btn-primary" onclick="AppView.AddVideo()">Add Video (1 mojo)</button>
-        </div>
-    </div>
-    <br>
-    <br>
-    <div class="row">
-        <div class="col-lg-12" style="text-align: center;">
-            <button class="btn btn-primary" onclick="AppView.SelectVideoFile()">Select Video File 
-                (mp4)</button>
-        </div>
-    </div>
-    
-    <br>
-    <div class="row" id="VideoList">
-
-    </div>
+<br>
+<h1 id="LblChanelName"></h1>
+<br>
+<div class="row box" id="VideoList">
 
 </div>
 <br>
@@ -47,3 +9,35 @@
 <br>
 <br>
 <br>
+<div class="modal fade" id="AddVideoModal">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <!-- Contenido del modal -->
+            <div class="modal-header">
+                <h5 class="modal-title">Add Video</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+            </div>
+            <div class="modal-body">
+                <div class="row" id="ConainerAddVideo">
+                    <div class="col-lg-12" style="text-align: center;">
+                        <img id="preview" src="img/imgplaceholder.png" alt="Image preview..." onclick="AppView.SelectVideoImage()">
+                    </div>
+                    <div class="col-lg-12" style="text-align: center;">
+                        <button class="btn btn-primary" onclick="AppView.SelectVideoImage()">Select Video Image</button>
+                    </div>
+                    <div class="col-lg-12" style="text-align: center;">
+                        <label for="videoName">Video Name</label>
+                        <input type="text" id="videoName" placeholder="Video Name" class="form-control">
+                    </div>
+                    <div class="col-lg-12" style="text-align: center;">
+                        <label for="Fee">Fee in XCH</label>
+                        <input type="number" id="Fee" placeholder="Fee" value="0" class="form-control">
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-primary"  onclick="AppView.AddVideo()">Add Video (1 mojo)</button>
+            </div>
+        </div>
+    </div>
+</div>
