@@ -45,18 +45,6 @@ async function FileOpen(event, title, extensions) {
     }
 }
 
-async function CreateTempFileStore(event, Chanel) {
-    let Response = await chiaDataLayer.createTempFileStore(Chanel);
-
-    return Response;
-}
-async function DeleteTempFileStore(event, Chanel) {
-    let Response = await chiaDataLayer.deleteTempFileStore(Chanel);
-
-    return Response;
-}
-
-
 async function PrepareVideo(event, IdVideo, TotalChunks,Size) {
 
     VFile = new VideoFile(IdVideo, TotalChunks,Size);
@@ -118,8 +106,8 @@ app.whenReady().then(() => {
     ipcMain.handle('PrepareVideo', PrepareVideo);
     ipcMain.handle('StopPrepareVideo', StopPrepareVideo);
     ipcMain.handle('PercentageLoaded', (event)=> {return VFile.percentageLoaded();});
-    ipcMain.handle('CreateTempFileStore',(event, Chanel)=>{return chiaDataLayer.createTempFileStore()})
-    ipcMain.handle('DeleteTempFileStore',DeleteTempFileStore)
+    ipcMain.handle('CreateTempFileStore',(event, Chanel)=>{return chiaDataLayer.createTempFileStore(Chanel)})
+    ipcMain.handle('DeleteTempFileStore',(event, Chanel) =>{return chiaDataLayer.deleteTempFileStore(Chanel);})
     ipcMain.handle('GetChanels', (event)=> {return chiaDataLayer.getChanels();});
     ipcMain.handle('IsChiaInstalled', ()=>{return chiaDataLayer.isChiaInstalled()});
     ipcMain.handle('UnsubscribeChanel', (event,IdChanel)=>{ return chiaDataLayer.unsubscribeChanel(IdChanel) });

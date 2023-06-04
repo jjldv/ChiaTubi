@@ -35,9 +35,7 @@ Home.prototype.CreateChanel = async function () {
         alert("Name and Image are required");
         return;
     }
-    var createChanelModal = new bootstrap.Modal(document.getElementById('CreateChanelModal'));
 
-    createChanelModal.hide();
     util.showLoading("Registering Chanel");
     let Chanel = {
         Name: Name,
@@ -56,8 +54,10 @@ Home.prototype.CreateChanel = async function () {
     let CreateTemp = await window.electronAPI.CreateTempFileStore(Chanel);
     console.log(CreateTemp);
     this.InsertCardChanel(Chanel);
-    util.hideLoading();
+    const modal = document.getElementById("CreateChanelModal");
 
+    modal.style.display = "none";
+    util.hideLoading();
     await util.sleep(5000);
 
     this.ConfirmChanel(Chanel);
