@@ -79,7 +79,7 @@ function createWindow() {
         width: 800,
         height: 600,
         backgroundColor: '#141414',
-        icon: path.join(__dirname,"img", 'icon.png'), // Ruta al archivo de icono
+        icon: path.join(app.getAppPath(),"img", 'icon.png'), // Ruta al archivo de icono
         webPreferences: {
             nodeIntegration: false, 
             contextIsolation: true, 
@@ -106,13 +106,14 @@ app.whenReady().then(() => {
     ipcMain.handle('PrepareVideo', PrepareVideo);
     ipcMain.handle('StopPrepareVideo', StopPrepareVideo);
     ipcMain.handle('PercentageLoaded', (event)=> {return VFile.percentageLoaded();});
-    ipcMain.handle('CreateTempFileStore',(event, Chanel,Type)=>{return chiaDataLayer.createTempFileStore(Chanel,Type)})
-    ipcMain.handle('DeleteTempFileStore',(event, Chanel,Type) =>{return chiaDataLayer.deleteTempFileStore(Chanel,Type);})
+    ipcMain.handle('CreateTempFileStore',(event, Chanel,Type,PendingType)=>{return chiaDataLayer.createTempFileStore(Chanel,Type,PendingType)})
+    ipcMain.handle('DeleteTempFileStore',(event, Chanel,Type,PendingType) =>{return chiaDataLayer.deleteTempFileStore(Chanel,Type,PendingType);})
     ipcMain.handle('GetChanels', (event)=> {return chiaDataLayer.getChanels();});
     ipcMain.handle('IsChiaInstalled', ()=>{return chiaDataLayer.isChiaInstalled()});
     ipcMain.handle('UnsubscribeChanel', (event,IdChanel)=>{ return chiaDataLayer.unsubscribeChanel(IdChanel) });
     ipcMain.handle('SubscribeChanel', (event,IdChanel)=>{ return chiaDataLayer.subscribeChanel(IdChanel) });
     ipcMain.handle('GetChanelsPending', (event)=> {return chiaDataLayer.getChanelsPending();});
+    ipcMain.handle('GetChanelsSubscriptionPending', (event)=> {return chiaDataLayer.getChanelsSubscriptionPending();});
     ipcMain.handle('openFolder', FolderOpen);
     ipcMain.handle('splitFileIntoChunks', (event, dirName, chunkSizeMB)=> {return chiaDataLayer.splitFileIntoChunks(dirName, chunkSizeMB);});
     ipcMain.handle('reconstructMP4FromChunks', (event, FolderPath, OutputName, totalChunks)=> {return chiaDataLayer.reconstructMP4FromChunks(FolderPath, OutputName, totalChunks);});

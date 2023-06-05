@@ -47,7 +47,7 @@ Chanel.prototype.AddVideo = async function () {
         alert("Chanel Id is required");
         return;
     }
-
+    util.showLoading("Registering Video");
 
     let Response = await window.electronAPI.CreateStore(Video.Fee);
     if (Response.status === "error") {
@@ -57,7 +57,7 @@ Chanel.prototype.AddVideo = async function () {
     }
     console.log(Response);
     Video.Id = Response.id;
-    let CreateTemp = await window.electronAPI.CreateTempFileStore(Video,"Video");
+    let CreateTemp = await window.electronAPI.CreateTempFileStore(Video,"Video","PendingInsert");
     console.log(CreateTemp);
     this.InsertCardVideo(Video);
     

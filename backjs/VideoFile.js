@@ -2,6 +2,10 @@ const ChiaDataLayer = require('./ChiaDataLayer');
 const chiaDataLayer = new ChiaDataLayer();
 const fs = require('fs');
 const path = require('path');
+const {
+    nativeImage,
+    app
+} = require('electron');
 
 function VideoFile(IdVideo, TotalChunks, Size) {
     this.Id = IdVideo;
@@ -23,7 +27,7 @@ VideoFile.prototype.percentageLoaded = function () {
     return (this.NextIndexHexBuffer / this.TotalChunks) * 100;
 }
 VideoFile.prototype.DeleteCurrentPlayerTemp = async function () {
-    const tempFolderPath = path.join(__dirname, 'temp', 'CurrentPlayer');
+    const tempFolderPath = path.join(app.getAppPath(), 'temp', 'CurrentPlayer');
 
     try {
         // Obtener la lista de archivos en la carpeta temp/CurrentPlayer

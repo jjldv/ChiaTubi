@@ -55,7 +55,7 @@ Home.prototype.CreateChanel = async function () {
     }
     console.log(Response);
     Chanel.Id = Response.id;
-    let CreateTemp = await window.electronAPI.CreateTempFileStore(Chanel,"Chanel");
+    let CreateTemp = await window.electronAPI.CreateTempFileStore(Chanel, "Chanel", "PendingInsert");
     console.log(CreateTemp);
     this.InsertCardChanel(Chanel);
     const modal = document.getElementById("CreateChanelModal");
@@ -67,6 +67,25 @@ Home.prototype.CreateChanel = async function () {
     this.ConfirmChanel(Chanel);
 
 }
+Home.prototype.ConfirmChanelSubscription = async function (Chanel) {
+    const element = document.getElementById(`Status_${Chanel.Id}`);
+
+    let IsChanelConfirmed = false;
+
+    while (!IsChanelConfirmed && AppView instanceof Home) {
+        let RIsConfirmed = await window.electronAPI.IsKeyConfirmed(Chanel.Id, "IsChanel");
+
+        if (RIsConfirmed.error !== undefined) {
+            await util.sleep(1000);
+        } else {
+            let DeleteTemp = await window.electronAPI.DeleteTempFileStore(Chanel, "Chanel", "PendingSubscribe");
+            console.log(DeleteTemp);
+            IsChanelConfirmed = true;
+            util.GoHome();
+        }
+    }
+
+}
 Home.prototype.ConfirmChanel = async function (Chanel) {
     const element = document.getElementById(`Status_${Chanel.Id}`);
     let IsChanelConfirmed = false;
@@ -76,7 +95,7 @@ Home.prototype.ConfirmChanel = async function (Chanel) {
         if (RIsConfirmed.hash === undefined) {
             await util.sleep(1000);
         } else {
-            if(element)
+            if (element)
                 element.innerHTML = "Inserting Details";
             IsChanelConfirmed = true;
         }
@@ -98,47 +117,71 @@ Home.prototype.ConfirmChanel = async function (Chanel) {
         if (RIsConfirmed.error !== undefined) {
             await util.sleep(1000);
         } else {
-            if(element){
+            if (element) {
                 element.innerHTML = "Confirmed";
                 var IdCard = document.getElementById(Chanel.Id);
 
-                IdCard.onclick = function() {
+                IdCard.onclick = function () {
                     AppView.LoadChanel(`${Chanel.Id}`, `${Chanel.Name}`)
                 };
             }
             IsChanelConfirmed = true;
         }
     }
-    let DeleteTemp = await window.electronAPI.DeleteTempFileStore(Chanel,"Chanel");
+    let DeleteTemp = await window.electronAPI.DeleteTempFileStore(Chanel, "Chanel", "PendingInsert");
     console.log(DeleteTemp);
 }
 
 Home.prototype.LoadChanels = async function () {
     util.showLoading("Loading Chanels...");
-    let Chanels = await window.electronAPI.GetChanels();
-
-    for (let i = 0; i < Chanels.length; i++) {
-        this.InsertCardChanel(Chanels[i], true);
-    }
     let ChanelsPending = await window.electronAPI.GetChanelsPending();
 
     for (let i = 0; i < ChanelsPending.length; i++) {
         this.InsertCardChanel(ChanelsPending[i], false);
         this.ConfirmChanel(ChanelsPending[i]);
     }
+    let ChanelsSubscriptionPending = await window.electronAPI.GetChanelsSubscriptionPending();
+
+    for (let i = 0; i < ChanelsSubscriptionPending.length; i++) {
+        this.InsertCardChanel(ChanelsSubscriptionPending[i], false, "PendingSubscribe");
+        this.ConfirmChanelSubscription(ChanelsSubscriptionPending[i]);
+    }
+    let Chanels = await window.electronAPI.GetChanels();
+
+    for (let i = 0; i < Chanels.length; i++) {
+        this.InsertCardChanel(Chanels[i], true);
+    }
     util.hideLoading();
 }
 
-
-Home.prototype.InsertCardChanel = function (Chanel, IsChanelConfirmed = false) {
+Home.prototype.RemovePending = async function (Id, PendingType) {
+    util.showLoading("Removing Pending Chanel");
+    
+    let DeleteTemp = await window.electronAPI.DeleteTempFileStore({
+        Id: Id
+    }, "Chanel", PendingType);
+    if (DeleteTemp.status !== undefined && DeleteTemp.status === "success") {
+        var ContElement = document.getElementById("Cont" + Id);
+        if (ContElement) {
+            ContElement.remove();
+        }
+    }
+    if (PendingType === "PendingInsert") {
+        let Response = await window.electronAPI.UnsubscribeChanel(Id);
+        console.log(Response);
+    }
+    util.hideLoading();
+}
+Home.prototype.InsertCardChanel = function (Chanel, IsChanelConfirmed = false, PendingType = "PendingInsert") {
     let onclick = IsChanelConfirmed ? `onclick="AppView.LoadChanel('${Chanel.Id}', '${Chanel.Name}')"` : "";
+    let BtnRemove = IsChanelConfirmed ? `<button type="button" class="btn btn-danger" onclick="AppView.Unsubscribe('${Chanel.Id}')">Unsubscribe</button>` : `<button class="btn btn-danger" style="width:100%;" onclick="AppView.RemovePending('${Chanel.Id}','${PendingType}')">Remove</button>`;
     let CardElement = `
-        <a  href="#"  title="${Chanel.Name} - Store Id:${Chanel.Id}" style="text-decoration:none;text-align:center;">
+        <a  href="#" id="Cont${Chanel.Id}"  title="${Chanel.Name} - Store Id:${Chanel.Id}" style="text-decoration:none;text-align:center;">
             <img  id="${Chanel.Id}" src="${Chanel.Image}" ${onclick} alt="${Chanel.Name}">
             <div class="card-body">
               <h5 class="card-title">${Chanel.Name}</h5>
               <p class="card-text" id="Status_${Chanel.Id}" style="display:${IsChanelConfirmed ? "none" : "block"}">Pending</p>
-              <button class="btn btn-danger" style="width:100%;" onclick="AppView.Unsubscribe('${Chanel.Id}')">Unsubscribe</button>
+              ${BtnRemove}
             </div>
         </a>
     `;
@@ -166,12 +209,15 @@ Home.prototype.SubscribeChanel = async function () {
     modal.style.display = "none";
     util.showLoading("Subscribing...");
     let Response = await window.electronAPI.SubscribeChanel(IdChanel);
+    console.log(Response);
     util.hideLoading();
-    if (Response.success !== undefined && Response.success === true) {
-        util.GoHome();
+    if (Response != null && Response.Id !== undefined) {
+        this.InsertCardChanel(Response);
+        this.ConfirmChanelSubscription(Response);
     }
-    if (Response.status !== undefined && Response.status === "error" && Response.message) {
-        alert(Response.message);
+
+    if (Response.error !== undefined) {
+        alert(Response.error);
     }
 }
 Home.prototype.LoadChanel = async function (ChanelId, ChanelName) {

@@ -5,7 +5,7 @@ const {
 } = require('child_process');
 const {
     nativeImage,
-    app 
+    app
 } = require('electron');
 
 function ChiaDatalayer() {
@@ -125,24 +125,19 @@ ChiaDatalayer.prototype.unsubscribeChanel = async function (IdChanel) {
 ChiaDatalayer.prototype.subscribeChanel = async function (IdChanel) {
     let OutputCmd = await this.runCommand(`chia rpc data_layer subscribe  "{\\"id\\":\\"${IdChanel}\\"}"`);
     if (OutputCmd.success !== undefined && OutputCmd.success === true) {
-        let Try = true;
-        while (Try) {
-            let Response = await this.isKeyConfirmed(IdChanel, "IsChanel");
-            if (Response.error !== undefined) {
-                await this.sleep(1000);
-                continue;
-            }
-            let Chan = await this.getChanelFromChain(IdChanel);
-            if (Chan !== undefined) {
-                this.insertToLocalChanelFile(Chan);
-                Try = false;
-            }
-        }
+        const filePath = path.join(app.getAppPath(), 'img', 'imgplaceholder.png');
+        let Chan = {
+            Name: "----",
+            Image: filePath,
+            Id: IdChanel
+        };
+        this.createTempFileStore(Chan,"Chanel","PendingSubscribe");
+        return Chan;
     }
     return OutputCmd;
 }
 ChiaDatalayer.prototype.removeChanelFromLocalFile = function (idStore) {
-    const filePath = path.join(app.getAppPath(), 'temp', 'Chanels.json');
+    const filePath = path.join(app.getAppPath(), 'temp',"Chanel", 'Chanels.json');
 
     try {
         const data = fs.readFileSync(filePath, 'utf8');
@@ -244,7 +239,7 @@ ChiaDatalayer.prototype.getChanelsFromChain = async function () {
         }
     }
     if (Chanels.length > 0) {
-        const filePath = path.join(app.getAppPath(), 'temp', `Chanels.json`);
+        const filePath = path.join(app.getAppPath(), 'temp',"Chanel", `Chanels.json`);
         const writeStream = fs.createWriteStream(filePath);
         writeStream.write(JSON.stringify(Chanels, null, 2));
     }
@@ -271,7 +266,7 @@ ChiaDatalayer.prototype.getChanelFromChain = async function (idStore) {
     return null;
 }
 ChiaDatalayer.prototype.getChanels = async function (_fromChain = false) {
-    const filePath = path.join(app.getAppPath(), 'temp', 'Chanels.json');
+    const filePath = path.join(app.getAppPath(), 'temp',"Chanel", 'Chanels.json');
 
     if (_fromChain || !fs.existsSync(filePath)) {
         return this.getChanelsFromChain();
@@ -282,7 +277,29 @@ ChiaDatalayer.prototype.getChanels = async function (_fromChain = false) {
 
 };
 ChiaDatalayer.prototype.getChanelsPending = async function () {
-    const folderPath = path.join(app.getAppPath(), 'temp', 'Pending',"Chanel");
+    const folderPath = path.join(app.getAppPath(), 'temp', 'PendingInsert', "Chanel");
+
+    const fileNames = fs.readdirSync(folderPath);
+    const jsonFiles = [];
+
+    fileNames.forEach((fileName) => {
+        const filePath = path.join(folderPath, fileName);
+        const fileContent = fs.readFileSync(filePath, 'utf-8');
+
+        try {
+            const jsonData = JSON.parse(fileContent);
+            jsonFiles.push(jsonData);
+        } catch (error) {
+            console.error(`Error parsing JSON file: ${filePath}`);
+            console.error(error);
+        }
+    });
+
+    return jsonFiles;
+
+};
+ChiaDatalayer.prototype.getChanelsSubscriptionPending = async function () {
+    const folderPath = path.join(app.getAppPath(), 'temp', 'PendingSubscribe', "Chanel");
 
     const fileNames = fs.readdirSync(folderPath);
     const jsonFiles = [];
@@ -306,7 +323,7 @@ ChiaDatalayer.prototype.getChanelsPending = async function () {
 ChiaDatalayer.prototype.sendVideoChunks = async function (Video) {
     return new Promise(async (resolve, reject) => {
         try {
-            const directoryPath = path.join(app.getAppPath(), 'temp');
+            const directoryPath = path.join(app.getAppPath(), 'temp', "Chunk");
             const pattern = `VideoFile${Video.Id}_Part_*.json`; //to delete
             // Obtiene el tamaño del archivo en bytes
             const fileSizeInBytes = fs.statSync(Video.VideoPath).size;
@@ -334,6 +351,20 @@ ChiaDatalayer.prototype.sendVideoChunks = async function (Video) {
                 writeStream.write('  "changelist": [\n');
                 const chunkData = this.generateChunkData(Video.VideoPath, i);
                 const chunkHex = chunkData.toString('hex');
+
+                if (i == 0) {
+                    let VideoDetails = await this.getVideoDetails(Video);
+                    let KeyIdStore = this.stringToHex("VideoDetails");
+                    const objectDetailData = {
+                        "action": "insert",
+                        "key": KeyIdStore,
+                        "value": this.stringToHex(JSON.stringify(VideoDetails))
+                    }
+                    const jsonDetailData = JSON.stringify(objectDetailData, null, 2); // Usa null y 2 para dar formato legible al JSON
+                    writeStream.write(jsonDetailData);
+                    writeStream.write(',');
+                }
+
 
                 const objectDelete = {
                     action: 'delete',
@@ -430,7 +461,7 @@ ChiaDatalayer.prototype.insertChanelDetails = async function (chanel) {
         ]
     };
 
-    const filePath = path.join(app.getAppPath(), 'temp', `insert_${chanel.Id}.json`);
+    const filePath = path.join(app.getAppPath(), 'temp',"Insert", `insert_${chanel.Id}.json`);
     const jsonData = JSON.stringify(Jsonobject, null, 2);
     fs.writeFileSync(filePath, jsonData, 'utf8');
 
@@ -468,11 +499,9 @@ ChiaDatalayer.prototype.getChunk = async function (IdVideo, Part, TotalChunks) {
     }
     return null;
 }
-
-ChiaDatalayer.prototype.insertVideoDetails = async function (Video) {
+ChiaDatalayer.prototype.getVideoDetails = async function (Video) {
     let Image = await this.processImage(Video.Image);
     Image = this.base64ToHex(Image);
-    let KeyIdStore = this.stringToHex("Video" + Video.Id);
     let Size = await this.getFileSize(Video.VideoPath);
     let TotalChunks = this.calculateNumberOfChunks(Size, this.chunkSizeMB);
     let VideoDetails = {
@@ -484,6 +513,12 @@ ChiaDatalayer.prototype.insertVideoDetails = async function (Video) {
         Size: Size,
         TotalChunks: TotalChunks
     };
+    return VideoDetails;
+}
+ChiaDatalayer.prototype.insertVideoDetails = async function (Video) {
+    let VideoDetails = await this.getVideoDetails(Video);
+    let KeyIdStore = this.stringToHex("Video" + Video.Id);
+
     const Jsonobject = {
         "id": Video.IdChanel,
         "fee": "0",
@@ -494,7 +529,7 @@ ChiaDatalayer.prototype.insertVideoDetails = async function (Video) {
         }]
     };
 
-    const filePath = path.join(app.getAppPath(), 'temp', `insert_${Video.Id}.json`);
+    const filePath = path.join(app.getAppPath(), 'temp',"Insert", `insert_${Video.Id}.json`);
     const jsonData = JSON.stringify(Jsonobject, null, 2);
     fs.writeFileSync(filePath, jsonData, 'utf8');
 
@@ -556,20 +591,34 @@ ChiaDatalayer.prototype.getChanelVideosFromChain = async function (idChanel) {
             KeyString = KeyString.trim();
             if (KeyString.startsWith("Video")) {
 
-                let VideoOuput = await this.runCommand("chia data get_value --id " + idChanel + " --key " + OutputCmd.keys[i]);
-
-                if (VideoOuput.value !== undefined) {
-                    let Video = JSON.parse(this.hexToString(VideoOuput.value));
+                //todo
+                let Parameters = {
+                    "id": idChanel,
+                    "key": OutputCmd.keys[i]
+                };
+                const folderPath = path.join(app.getAppPath(), 'temp', "Chanel");
+                const filePath = path.join(folderPath, KeyString + '.json');
+                const filePathOut = path.join(folderPath, KeyString + '_out.json');
+                const json = JSON.stringify(Parameters, null, 2);
+                fs.writeFileSync(filePath, json);
+                let OutputCmddata = await this.runCommand(`chia rpc data_layer get_value -j ${filePath} > ${filePathOut}`);
+                fs.unlinkSync(filePath);
+                let Content = fs.readFileSync(filePathOut, 'utf8');
+                Content = JSON.parse(Content);
+                fs.unlinkSync(filePathOut);
+                if (Content.value !== undefined) {
+                    let Video = JSON.parse(this.hexToString(Content.value));
                     Video.Image = this.hexToBase64(Video.Image);
                     Videos.push(Video);
                 }
+
             }
 
         }
     }
     if (Videos.length > 0) {
 
-        const filePath = path.join(app.getAppPath(), 'temp', `Chanel_${idChanel}.json`);
+        const filePath = path.join(app.getAppPath(), 'temp',"Chanel", `Chanel_${idChanel}.json`);
         const writeStream = fs.createWriteStream(filePath);
         writeStream.write(JSON.stringify(Videos, null, 2));
     }
@@ -577,7 +626,7 @@ ChiaDatalayer.prototype.getChanelVideosFromChain = async function (idChanel) {
 }
 
 ChiaDatalayer.prototype.getChanelVideos = async function (idChanel, _fromChain = false) {
-    const filePath = path.join(app.getAppPath(), 'temp', 'Chanel_' + idChanel + '.json');
+    const filePath = path.join(app.getAppPath(), 'temp',"Chanel", 'Chanel_' + idChanel + '.json');
 
     if (_fromChain || !fs.existsSync(filePath)) {
         return this.getChanelVideosFromChain(idChanel);
@@ -680,52 +729,36 @@ ChiaDatalayer.prototype.parseOutput = function (output) {
     }
 };
 
-ChiaDatalayer.prototype.processImage = async function (FilePath, maxSizeInKB = 100) {
+ChiaDatalayer.prototype.processImage = async function (FilePath) {
     const img = nativeImage.createFromPath(FilePath);
+
     const anchoOriginal = img.getSize().width;
     const altoOriginal = img.getSize().height;
 
-    let anchoRedimensionado = anchoOriginal;
-    let altoRedimensionado = altoOriginal;
+    if (anchoOriginal > 100 && FilePath.toLowerCase().endsWith('.jpg')) {
+        const ratio = 100 / anchoOriginal;
+        const anchoRedimensionado = 100;
+        const altoRedimensionado = Math.round(altoOriginal * ratio);
 
-    if (anchoOriginal > 300 && FilePath.toLowerCase().endsWith('.jpg')) {
-        const ratio = 300 / anchoOriginal;
-        anchoRedimensionado = 300;
-        altoRedimensionado = Math.round(altoOriginal * ratio);
-    }
-
-    let imagenRedimensionada = img.resize({
-        width: anchoRedimensionado,
-        height: altoRedimensionado
-    });
-
-    const imagenBase64 = imagenRedimensionada.toDataURL();
-
-    const fileSizeInBytes = Buffer.byteLength(imagenBase64, 'base64');
-    const fileSizeInKB = fileSizeInBytes / 1024;
-
-    if (fileSizeInKB > maxSizeInKB) {
-        const scaleRatio = Math.sqrt(maxSizeInKB / fileSizeInKB);
-        anchoRedimensionado *= scaleRatio;
-        altoRedimensionado *= scaleRatio;
-
-        imagenRedimensionada = img.resize({
+        const imagenRedimensionada = img.resize({
             width: anchoRedimensionado,
             height: altoRedimensionado
         });
 
-        return imagenRedimensionada.toDataURL();
+        const imagenBase64 = imagenRedimensionada.toDataURL();
+
+        return imagenBase64;
+    } else {
+        const imagenBase64 = img.toDataURL();
+        return imagenBase64;
     }
-
-    return imagenBase64;
 };
-
-ChiaDatalayer.prototype.createTempFileStore = async function (Chanel,Type) {
+ChiaDatalayer.prototype.createTempFileStore = async function (DataObject, Type,PendingType = "PendingInsert") {
 
     try {
-        const directoryPath = path.join(app.getAppPath(), 'temp', 'Pending',Type);
-        const filePath = path.join(directoryPath, Chanel.Id + '.json');
-        const data = JSON.stringify(Chanel);
+        const directoryPath = path.join(app.getAppPath(), 'temp', PendingType, Type);
+        const filePath = path.join(directoryPath, DataObject.Id + '.json');
+        const data = JSON.stringify(DataObject);
 
         await fs.promises.writeFile(filePath, data);
         return {
@@ -741,20 +774,22 @@ ChiaDatalayer.prototype.createTempFileStore = async function (Chanel,Type) {
 
 };
 ChiaDatalayer.prototype.insertToLocalChanelFile = async function (Chanel) {
-    const filePath = path.join(app.getAppPath(), 'temp', 'Chanels.json');
+    const filePath = path.join(app.getAppPath(), 'temp',"Chanel", 'Chanels.json');
     const fileContent = fs.readFileSync(filePath, 'utf-8');
     const data = JSON.parse(fileContent);
     data.push(Chanel);
     const jsonActualizado = JSON.stringify(data, null, 2);
     fs.writeFileSync(filePath, jsonActualizado, 'utf-8');
 }
-ChiaDatalayer.prototype.deleteTempFileStore = async function (Chanel,Type) {
-    const filePath = path.join(app.getAppPath(), 'temp', 'Pending',Type, Chanel.Id + '.json');
+ChiaDatalayer.prototype.deleteTempFileStore = async function (DataObject, Type,PendingType = "PendingInsert") {
+    const filePath = path.join(app.getAppPath(), 'temp', PendingType, Type, DataObject.Id + '.json');
     try {
         await fs.promises.unlink(filePath);
-        let ChainChanel = await this.getChanelFromChain(Chanel.Id);
-        if (ChainChanel != null) {
-            this.insertToLocalChanelFile(ChainChanel);
+        if (Type == "Chanel") {
+            let ChainChanel = await this.getChanelFromChain(DataObject.Id);
+            if (ChainChanel != null) {
+                this.insertToLocalChanelFile(ChainChanel);
+            }
         }
         return {
             status: "success",
