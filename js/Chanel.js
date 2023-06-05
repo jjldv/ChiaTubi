@@ -79,26 +79,43 @@ Chanel.prototype.ConfirmVideo = async function (Video) {
             await util.sleep(1000);
         } else {
             if(element)
-                element.innerHTML = "Store Created"
+                element.innerHTML = "Storing Video"
             IsVideoStoreConfirmed = true;
         }
+    }
+    let IsInserted = false;
+    while (!IsInserted &&  AppView instanceof Chanel) {
+        let RIsInserted = await window.electronAPI.InsertVideoFile(Video);
+        console.log(RIsInserted);
+        if(element)
+            element.innerHTML = RIsInserted.message??"Storing Video";
+        if (RIsInserted.IsCompleted !== undefined && RIsInserted.IsCompleted) {
+            IsInserted = true;
+        }
+        else{
+            await util.sleep(10000);
+        }
+    }
+
+    if(Video.IdChanel === null || !AppView instanceof Home){
+        return;
     }
 
     await window.electronAPI.InsertVideoDetails(Video);
     let IsVideoDetailsConfirmed = false;
 
-    while (!IsVideoDetailsConfirmed) {
+    while (!IsVideoDetailsConfirmed &&  AppView instanceof Chanel) {
         let RIsConfirmed = await window.electronAPI.IsKeyConfirmed(Video.IdChanel,"Video"+Video.Id);
 
         if (RIsConfirmed.error !== undefined) {
             await util.sleep(1000);
         } else {
             if(element)
-                element.innerHTML = "Procesing video";
+                element.innerHTML = "Added to Chanel";
             IsVideoDetailsConfirmed = true;
         }
     }
-    await window.electronAPI.InsertVideoFile(Video);
+   
 }
 Chanel.prototype.SelectVideoImage = async function () {
     this.ImagePath = null;
