@@ -103,7 +103,7 @@ Chanel.prototype.ConfirmVideo = async function (Video) {
             await util.sleep(10000);
         }
     }
-    if(Video.IdChanel === null && AppView instanceof Chanel){
+    if(Video.IdChanel === null && AppView instanceof Chanel && IsInserted){
         let DeleteTemp = await window.electronAPI.DeleteTempFileStore(Video, "Video", "PendingInsert");
         console.log(DeleteTemp);
         return
@@ -129,8 +129,11 @@ Chanel.prototype.ConfirmVideo = async function (Video) {
             IsVideoDetailsConfirmed = true;
         }
     }
-    let DeleteTemp = await window.electronAPI.DeleteTempFileStore(Video, "Video", "PendingInsert");
-    console.log(DeleteTemp);
+    if(AppView instanceof Chanel && IsVideoDetailsConfirmed){
+        let DeleteTemp = await window.electronAPI.DeleteTempFileStore(Video, "Video", "PendingInsert");
+        console.log(DeleteTemp);
+
+    }
 }
 Chanel.prototype.SelectVideoImage = async function () {
     this.ImagePath = null;
@@ -155,14 +158,15 @@ Chanel.prototype.GoHome = async function () {
     }
 }
 Chanel.prototype.InsertCardVideo = function (Video, IsVideoConfirmed = false) {
-
+    let BtnRemove = IsVideoConfirmed ? `<button class="btn btn-danger" style="width:100%;" onlick="Unsubscribe(${Video.Id})">Unsubscribe</button>` : "";
     let CardElement = `
         <a href="#" id="Cont${Video.Id}" onclick="AppView.LoadVideo('${Video.Id}',${Video.TotalChunks},'${Video.Name}',${Video.Size},'${Video.IdChanel}')" title="${Video.Name} - Store Id:${Video.Id}" style="text-decoration:none;text-align:center;">
             <img src="${Video.Image}" alt="${Video.Name}">
             <div class="card-body">
               <h5 class="card-title">${Video.Name}</h5>
               <p class="card-text" id="Status_${Video.Id}" style="display:${IsVideoConfirmed ? "none" : "block"}">Pending</p>
-              <button class="btn btn-danger" style="width:100%;" onlick="Unsubscribe(${Video.Id})">Unsubscribe</button>
+              ${BtnRemove}
+              
             </div>
         </a>
     `;

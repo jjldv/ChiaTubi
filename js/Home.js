@@ -174,7 +174,7 @@ Home.prototype.RemovePending = async function (Id, PendingType) {
 }
 Home.prototype.InsertCardChanel = function (Chanel, IsChanelConfirmed = false, PendingType = "PendingInsert") {
     let onclick = IsChanelConfirmed ? `onclick="AppView.LoadChanel('${Chanel.Id}', '${Chanel.Name}')"` : "";
-    let BtnRemove = IsChanelConfirmed ? `<button type="button" class="btn btn-danger" onclick="AppView.Unsubscribe('${Chanel.Id}')">Unsubscribe</button>` : `<button class="btn btn-danger" style="width:100%;" onclick="AppView.RemovePending('${Chanel.Id}','${PendingType}')">Remove</button>`;
+    let BtnRemove = IsChanelConfirmed ? `<button type="button" class="btn btn-danger" onclick="AppView.Unsubscribe('${Chanel.Id}')">Unsubscribe</button>` : ``;
     let CardElement = `
         <a  href="#" id="Cont${Chanel.Id}"  title="${Chanel.Name} - Store Id:${Chanel.Id}" style="text-decoration:none;text-align:center;">
             <img  id="${Chanel.Id}" src="${Chanel.Image}" ${onclick} alt="${Chanel.Name}">

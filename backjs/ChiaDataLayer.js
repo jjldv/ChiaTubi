@@ -564,7 +564,7 @@ ChiaDatalayer.prototype.insertChanelDetails = async function (chanel) {
     let OutputCmd = await this.runCommand(`chia rpc data_layer batch_update  -j ${filePath}`);
     return OutputCmd;
 };
-ChiaDatalayer.prototype.getChunk = async function (IdVideo, Part, TotalChunks) {
+ChiaDatalayer.prototype.getChunk = async function (IdVideo, Part, TotalChunks,AppPath = app.getAppPath()) {
     let Output = await this.runCommand(`chia data get_root_history --id ${IdVideo}`);
     if (Output.root_history !== undefined && Output.root_history.length - 1 >= Part) {
         let Parameters = {
@@ -572,7 +572,7 @@ ChiaDatalayer.prototype.getChunk = async function (IdVideo, Part, TotalChunks) {
             "key": this.stringToHex(`VideoChunk`),
             "root_hash": Output.root_history[Part].root_hash
         };
-        const folderPath = path.join(app.getAppPath(), 'temp', "CurrentPlayer");
+        const folderPath = path.join(AppPath, 'temp', "CurrentPlayer");
         this.ensureFolderExists(folderPath);
         const filePath = path.join(folderPath, Output.root_history[Part].root_hash + '_Part' + Part + '_p.json');
         const filePathOut = path.join(folderPath, Output.root_history[Part].root_hash + '_Part' + Part + '_out.json');

@@ -3,9 +3,12 @@ const chiaDataLayer = new ChiaDataLayer();
 const fs = require('fs');
 const path = require('path');
 const {
-    nativeImage,
     app
 } = require('electron');
+const {
+    fork
+} = require('child_process');
+
 
 function VideoFile(IdVideo, TotalChunks, Size) {
     this.Id = IdVideo;
@@ -18,6 +21,8 @@ function VideoFile(IdVideo, TotalChunks, Size) {
     this.ActiveRequests = 5;
     this.StopLoading = false;
 
+    this.activeProcesses = []
+
     this.currentTime = 0;
 }
 VideoFile.prototype.IsLoaded = function () {
@@ -28,6 +33,7 @@ VideoFile.prototype.percentageLoaded = function () {
 }
 VideoFile.prototype.DeleteCurrentPlayerTemp = async function () {
     const tempFolderPath = path.join(app.getAppPath(), 'temp', 'CurrentPlayer');
+    this.ensureFolderExists(tempFolderPath);
 
     try {
         // Obtener la lista de archivos en la carpeta temp/CurrentPlayer
@@ -65,9 +71,14 @@ VideoFile.prototype.LoadVideoAsync = async function (_indexstart = 0) {
                 ChunkIndex = _indexstart + 1;
             }
         }
+        if(this.StopLoading){
+            this.cancelAllGetChunks();
+        }
         await this.sleep(1000);
     }
+    this.cancelAllGetChunks();
 };
+
 VideoFile.prototype.ProcessChunks = function () {
     if (this.StopLoading)
         return;
@@ -113,8 +124,17 @@ VideoFile.prototype.GetFirstChunk = async function () {
 VideoFile.prototype.GetChunk = function (ChunkIndex) {
     if (this.NextIndexHexBuffer + 1 > ChunkIndex || this.HexBuffer[ChunkIndex - 1] !== undefined)
         return;
+
+    const childProcess = fork(path.join(__dirname, 'getChunkProcess.js'));
+
+    childProcess.send({
+        Id: this.Id,
+        ChunkIndex,
+        TotalChunks: this.TotalChunks,
+        AppPath: app.getAppPath()
+    });
     this.ActiveRequests++;
-    chiaDataLayer.getChunk(this.Id, ChunkIndex, this.TotalChunks).then((chunkHex) => {
+    childProcess.on('message', (chunkHex) => {
         this.ActiveRequests--;
         if (chunkHex !== null && !this.StopLoading) {
             console.log("Chunk found " + ChunkIndex + " of " + this.TotalChunks);
@@ -122,7 +142,56 @@ VideoFile.prototype.GetChunk = function (ChunkIndex) {
             this.ProcessChunks();
         }
 
+        // Remover el proceso hijo de la lista de procesos activos
+        const index = this.activeProcesses.indexOf(childProcess);
+        if (index !== -1) {
+            this.activeProcesses.splice(index, 1);
+        }
+
+        childProcess.disconnect();
     });
+
+    childProcess.on('error', (error) => {
+        this.ActiveRequests--;
+        console.error("Error fetching chunk:", error);
+
+        // Remover el proceso hijo de la lista de procesos activos
+        const index = this.activeProcesses.indexOf(childProcess);
+        if (index !== -1) {
+            this.activeProcesses.splice(index, 1);
+        }
+
+        childProcess.disconnect();
+    });
+
+    // Agregar el proceso hijo a la lista de procesos activos
+    this.activeProcesses.push(childProcess);
+};
+VideoFile.prototype.cancelAllGetChunks = function () {
+    for (const childProcess of this.activeProcesses) {
+        childProcess.kill();
+        childProcess.disconnect();
+    }
+
+    this.activeProcesses = []; // Limpiar la lista de procesos activos
+    this.ActiveRequests = 0;
+
+};
+
+VideoFile.prototype.cancelGetChunk = function () {
+    if (this.childProcess) {
+        this.childProcess.kill();
+        this.childProcess = null; // Limpiar la referencia al proceso hijo
+    }
+};
+
+VideoFile.prototype.ensureFolderExists = function (folderPath) {
+    if (!fs.existsSync(folderPath)) {
+        fs.mkdirSync(folderPath, {
+            recursive: true
+        });
+        console.log(`Temp created: ${folderPath}`);
+    }
 }
 VideoFile.prototype.sleep = function (ms) {
     return new Promise(resolve => setTimeout(resolve, ms));

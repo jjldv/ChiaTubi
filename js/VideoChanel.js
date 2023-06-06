@@ -72,7 +72,7 @@ VideoChanel.prototype.SetProgressBar = async function () {
         // Verificar si el porcentaje actual excede el porcentaje cargado
         if (this.PercentageLoaded != 100 && currentPercentage > (this.PercentageLoaded - 5)) {
             // Establecer el tiempo actual del video al máximo permitido
-            this.videoElement.currentTime = ((this.PercentageLoaded - 5) / 100) * totalDuration;
+            this.videoElement.currentTime = ((this.PercentageLoaded - 10) / 100) * totalDuration;
         }
     });
     this.videoElement.setAttribute('max', this.PercentageLoaded);
@@ -110,7 +110,7 @@ VideoChanel.prototype.Init = async function () {
     btnAddVideoModal.style.display = 'none';
     let IsPrepared = await window.electronAPI.PrepareVideo(this.Id, this.TotalChunks, this.Size);
     this.SetProgressBar();
-    while (this.PercentageLoaded < 15 && AppView.Id !==undefined && AppView.Id == this.Id) {
+    while (this.PercentageLoaded < 10 && AppView.Id !==undefined && AppView.Id == this.Id) {
         await util.sleep(1000);
     }
     if(AppView.Id !== this.Id)
