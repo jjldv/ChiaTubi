@@ -25,6 +25,13 @@ Chanel.prototype.Init = async function () {
         this.VideoPath = null;
     })
     util.showLoading("Loading Videos...");
+    let VideosPending = await window.electronAPI.GetChanelVideosPending(this.Id);
+
+    for (let i = 0; i < VideosPending.length; i++) {
+        this.InsertCardVideo(VideosPending[i]);
+        this.ConfirmVideo(VideosPending[i]);
+
+    }
     let Videos = await window.electronAPI.GetChanelVideos(this.Id);
 
     for (let i = 0; i < Videos.length; i++) {
@@ -142,7 +149,7 @@ Chanel.prototype.GoHome = async function () {
 Chanel.prototype.InsertCardVideo = function (Video, IsVideoConfirmed = false) {
 
     let CardElement = `
-        <a href="#" onclick="AppView.LoadVideo('${Video.Id}',${Video.TotalChunks},'${Video.Name}',${Video.Size},'${Video.IdChanel}')" title="${Video.Name} - Store Id:${Video.Id}" style="text-decoration:none;text-align:center;">
+        <a href="#" id="Cont${Video.Id}" onclick="AppView.LoadVideo('${Video.Id}',${Video.TotalChunks},'${Video.Name}',${Video.Size},'${Video.IdChanel}')" title="${Video.Name} - Store Id:${Video.Id}" style="text-decoration:none;text-align:center;">
             <img src="${Video.Image}" alt="${Video.Name}">
             <div class="card-body">
               <h5 class="card-title">${Video.Name}</h5>

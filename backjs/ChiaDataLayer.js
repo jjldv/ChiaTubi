@@ -7,6 +7,7 @@ const {
     nativeImage,
     app
 } = require('electron');
+const execSync = require('sync-exec');
 
 function ChiaDatalayer() {
     this.chunkSizeMB = 2; //in MB
@@ -464,7 +465,7 @@ ChiaDatalayer.prototype.insertNextVideoChunk = async function (Video) {
                 this.log(`Chunk ${Index2Continue + 1} de ${totalChunks} processed`);
                 Response = {
                     IsCompleted: false,
-                    message: Index2Continue + 1 == totalChunks ? "Validating last transaction" :`${Index2Continue + 1} / ${totalChunks} processed`,
+                    message: Index2Continue + 1 == totalChunks ? "Validating last transaction" : `${Index2Continue + 1} / ${totalChunks} processed`,
                     status: "success"
                 }
             } else {
@@ -824,6 +825,30 @@ ChiaDatalayer.prototype.getChanelVideos = async function (idChanel, _fromChain =
     const Videos = JSON.parse(data);
     return Videos;
 }
+ChiaDatalayer.prototype.getChanelVideosPending = async function (idChanel) {
+    const folderPath = path.join(app.getAppPath(), 'temp', 'PendingInsert', "Video");
+
+    const fileNames = fs.readdirSync(folderPath);
+    const jsonFiles = [];
+
+    fileNames.forEach((fileName) => {
+        const filePath = path.join(folderPath, fileName);
+        const fileContent = fs.readFileSync(filePath, 'utf-8');
+
+        try {
+            const jsonData = JSON.parse(fileContent);
+            if (jsonData.IdChanel === idChanel) {
+                jsonFiles.push(jsonData);
+            }
+            jsonFiles.push(jsonData);
+        } catch (error) {
+            console.error(`Error parsing JSON file: ${filePath}`);
+            console.error(error);
+        }
+    });
+
+    return jsonFiles;
+}
 ChiaDatalayer.prototype.stringToHex = function (text) {
     var hexString = "";
 
@@ -881,7 +906,7 @@ ChiaDatalayer.prototype.hexToBase64 = function (hexString) {
 
 ChiaDatalayer.prototype.parseOutput = function (output) {
     try {
-
+        console.log(output);
         if (output == "") {
             return {};
         }
@@ -907,6 +932,13 @@ ChiaDatalayer.prototype.parseOutput = function (output) {
             var errorIndex = output.indexOf("Request failed: ");
             output = output.substring(errorIndex + "Request failed: ".length);
         }
+        if (!this.isValidJSON(output)) {
+            output = {
+                status: "info",
+                message: output
+            }
+            return output;
+        }
         output = JSON.parse(output);
         return output;
     } catch (error) {
@@ -917,7 +949,14 @@ ChiaDatalayer.prototype.parseOutput = function (output) {
         };
     }
 };
-
+ChiaDatalayer.prototype.isValidJSON = function (jsonString) {
+    try {
+        JSON.parse(jsonString);
+        return true;
+    } catch (error) {
+        return false;
+    }
+}
 ChiaDatalayer.prototype.processImage = async function (FilePath) {
     const img = nativeImage.createFromPath(FilePath);
 
@@ -1026,36 +1065,64 @@ ChiaDatalayer.prototype.getFileSize = async function (filePath) {
     const fileSizeInMB = fileSizeInBytes / (1024 * 1024);
     return fileSizeInMB;
 }
+
+ChiaDatalayer.prototype.checkPrerequisites = async function (port = 8575) {
+    let IsChiaInstalled = this.isChiaInstalled();
+    if (IsChiaInstalled.status == "error") {
+        return IsChiaInstalled;
+    }
+    let IsDataLayerActive = await this.runCommand("chia rpc data_layer get_connections");
+    console.log(IsDataLayerActive);
+    if (IsDataLayerActive.status !== undefined && IsDataLayerActive.status == "error") {
+        let TryStartDataLayer = await this.runCommand("chia start data");
+        if (TryStartDataLayer.message !== undefined && !TryStartDataLayer.message.includes("chia_data_layer: started")) {
+            return {
+                status: "error",
+                message: "Please Enable DataLayer 'chia start data' or Go to Settings ->Data Layer ->Enable DataLayer"
+            };
+        }
+    }
+    let IsFileServerActive = await this.runCommand("chia start data_layer_http");
+    if(IsFileServerActive.message !== undefined && !IsFileServerActive.message.includes("Already running") && !IsFileServerActive.message.includes("chia_data_layer_http: started")){
+        return {
+            status: "error",
+            message: "Please Enable File Server 'chia start data_layer_http' or Go to Settings ->Data Layer ->Enable File Server Propagation"
+        };
+    }
+
+    return IsChiaInstalled;
+
+}
 ChiaDatalayer.prototype.isChiaInstalled = function () {
     try {
-        // Check if the "chia" command is active
+        // Verificar si el comando "chia" está activo
         execSync('chia --version');
-        console.log('The "chia" command is active.');
+        console.log('El comando "chia" está activo.');
 
         return {
             status: 'success',
-            message: 'The "chia" command is active.'
+            message: 'El comando "chia" está activo.'
         };
     } catch (error) {
-        console.error(`The "chia" command is not active: ${error.message}`);
+        console.error(`El comando "chia" no está activo: ${error.message}`);
 
-        // Check if the path exists
+        // Verificar si la ruta existe
         const chiaPath = path.join(process.env.LOCALAPPDATA, 'Programs', 'Chia', 'resources', 'app.asar.unpacked', 'daemon');
         try {
             fs.accessSync(chiaPath, fs.constants.F_OK);
             process.env.PATH += path.delimiter + chiaPath;
-            console.log(`The path ${chiaPath} has been added to the environment variables.`);
+            console.log(`La ruta ${chiaPath} se ha agregado a las variables de entorno.`);
 
             return {
                 status: 'success',
-                message: `The "chia" command is not active, but the path ${chiaPath} has been added to the environment variables.`
+                message: `El comando "chia" no está activo, pero la ruta ${chiaPath} se ha agregado a las variables de entorno.`
             };
         } catch (err) {
-            console.error(`The path ${chiaPath} does not exist.`);
+            console.error(`La ruta ${chiaPath} no existe.`);
 
             return {
                 status: 'error',
-                message: `The "chia" command is not active and the path ${chiaPath} does not exist.`
+                message: `El comando "chia" no está activo y la ruta ${chiaPath} no existe.`
             };
         }
     }

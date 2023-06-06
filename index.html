@@ -62,7 +62,9 @@
             let AppView = {};
             let util = new Utils();
             window.addEventListener('load', async  ()=> {
-                let IsChiaInstalled = await window.electronAPI.IsChiaInstalled();
+                util.showLoading("Checking Prerequisites...");
+                let IsChiaInstalled = await window.electronAPI.CheckPrerequisites();
+                util.hideLoading();
                 console.log(IsChiaInstalled);
                 if (IsChiaInstalled.status !== undefined && IsChiaInstalled.status === "success") {
                     util.GoHome();
