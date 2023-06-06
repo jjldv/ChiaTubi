@@ -60,7 +60,7 @@ VideoFile.prototype.LoadVideoAsync = async function (_indexstart = 0) {
     }
     this.ActiveRequests = 0;
 
-    let MaxRequests = 5;
+    let MaxRequests = 10;
 
     let ChunkIndex = _indexstart + 1;
     while (this.NextIndexHexBuffer != this.TotalChunks && !this.StopLoading) {
