@@ -15,106 +15,6 @@ function ChiaDatalayer() {
     this.logEnabled = true;
 }
 
-ChiaDatalayer.prototype.splitFileIntoChunks = function (file_path, chunk_size) {
-    chunk_size = chunk_size * 1024 * 1024; // Convertir de MB a bytes
-    const fileData = fs.readFileSync(file_path);
-    const fileDir = path.join(app.getAppPath(), 'video', this.convertToValidFolderName(path.basename(file_path)));
-    const fileName = path.basename(file_path, path.extname(file_path));
-
-    // Verificar si el directorio existe y eliminarlo si es necesario
-    if (fs.existsSync(fileDir)) {
-        fs.rmdirSync(fileDir, {
-            recursive: true
-        });
-    }
-
-    // Crear el directorio
-    fs.mkdirSync(fileDir, {
-        recursive: true
-    });
-
-    const totalChunks = Math.ceil(fileData.length / chunk_size);
-
-    let chunk_number = 1;
-    let offset = 0;
-
-    while (offset < fileData.length) {
-        const chunkData = fileData.slice(offset, offset + chunk_size);
-
-        // Convierte los datos del fragmento en una representación hexadecimal
-        const hexData = chunkData.toString('hex');
-
-        // Guarda el fragmento en un archivo separado
-        const chunk_filename = path.join(fileDir, `Part_${chunk_number}.txt`);
-        fs.writeFileSync(chunk_filename, hexData);
-
-        chunk_number++;
-        offset += chunk_size;
-    }
-
-    this.log(`El archivo MP4 ha sido dividido en ${chunk_number - 1} fragmentos.`);
-    return fileDir;
-};
-
-ChiaDatalayer.prototype.reconstructMP4FromChunks = function (chunk_directory, output_filename, totalChunks) {
-    const output_directory = chunk_directory;
-    const output_file = path.join(output_directory, output_filename);
-    const files = fs.readdirSync(chunk_directory);
-
-    const sortedFiles = files
-        .filter(file => file.endsWith('.txt'))
-        .sort((a, b) => {
-            const aNum = parseInt(a.match(/Part_(\d+)/)[1]);
-            const bNum = parseInt(b.match(/Part_(\d+)/)[1]);
-            return aNum - bNum;
-        });
-
-    const outputStream = fs.createWriteStream(output_file);
-
-    let expectedChunkNumber = 1;
-
-    for (const file of sortedFiles) {
-        const chunk_filepath = path.join(chunk_directory, file);
-        const chunk_data = fs.readFileSync(chunk_filepath, 'utf-8');
-
-        // Verificar si el número de fragmento es el esperado
-        const regex = /Part_(\d+)/;
-
-        // Buscar el número de parte en el nombre del archivo
-        const resultado = chunk_filepath.match(regex);
-        const chunkNumber = resultado[1];
-
-
-
-        while (expectedChunkNumber < chunkNumber) {
-            // Generar datos dummy para los fragmentos faltantes
-            const dummyData = Buffer.alloc(this.chunkSize); // Tamaño del chunk dummy (10MB)
-            outputStream.write(dummyData);
-
-            expectedChunkNumber++;
-        }
-
-        // Convertir datos hexadecimales a binarios
-        const binary_data = Buffer.from(chunk_data, 'hex');
-        outputStream.write(binary_data);
-
-        expectedChunkNumber++;
-    }
-
-    // Generar datos dummy para los fragmentos restantes (si hay)
-    while (expectedChunkNumber <= totalChunks) {
-        const dummyData = Buffer.alloc(10 * 1024 * 1024); // Tamaño del chunk dummy (10MB)
-        outputStream.write(dummyData);
-
-        expectedChunkNumber++;
-    }
-
-    outputStream.end();
-
-    this.log(`Los fragmentos en '${chunk_directory}' han sido combinados en el archivo '${output_file}'.`);
-    return output_file;
-};
-
 ChiaDatalayer.prototype.unsubscribeChanel = async function (IdChanel) {
     let OutputCmd = await this.runCommand(`chia rpc data_layer unsubscribe "{\\"id\\":\\"${IdChanel}\\"}"`);
     if (OutputCmd.success !== undefined && OutputCmd.success === true) {
@@ -138,8 +38,9 @@ ChiaDatalayer.prototype.subscribeChanel = async function (IdChanel) {
     return OutputCmd;
 }
 ChiaDatalayer.prototype.removeChanelFromLocalFile = function (idStore) {
-    const filePath = path.join(app.getAppPath(), 'temp', "Chanel", 'Chanels.json');
-
+    const folderPath = path.join(app.getAppPath(), 'temp', "Chanel");
+    const filePath = path.join(folderPath, 'Chanels.json');
+    this.ensureFolderExists(folderPath);
     try {
         const data = fs.readFileSync(filePath, 'utf8');
 
@@ -180,19 +81,6 @@ ChiaDatalayer.prototype.removeStoreFiles = function (idStore) {
         console.error(`La ruta ${chiaDataPath} no existe.`);
     }
 };
-ChiaDatalayer.prototype.convertToValidFolderName = function (fileName) {
-    const invalidCharsRegex = /[^a-zA-Z0-9]/g;
-    const replacementChar = "-"; // Carácter a utilizar como reemplazo para los caracteres no permitidos
-
-    // Reemplazar los caracteres no permitidos con el carácter de reemplazo
-    const validName = fileName.replace(invalidCharsRegex, replacementChar);
-
-    return validName.trim(); // Eliminar espacios en blanco al principio y al final del nombre
-};
-
-const {
-    spawn
-} = require('child_process');
 
 ChiaDatalayer.prototype.runCommand = async function (command) {
     this.log(command);
@@ -240,7 +128,9 @@ ChiaDatalayer.prototype.getChanelsFromChain = async function () {
         }
     }
     if (Chanels.length > 0) {
-        const filePath = path.join(app.getAppPath(), 'temp', "Chanel", `Chanels.json`);
+        const folderPath = path.join(app.getAppPath(), 'temp', "Chanel");
+        const filePath = path.join(folderPath, `Chanels.json`);
+        this.ensureFolderExists(folderPath);
         const writeStream = fs.createWriteStream(filePath);
         writeStream.write(JSON.stringify(Chanels, null, 2));
     }
@@ -278,47 +168,58 @@ ChiaDatalayer.prototype.getChanels = async function (_fromChain = false) {
 
 };
 ChiaDatalayer.prototype.getChanelsPending = async function () {
-    const folderPath = path.join(app.getAppPath(), 'temp', 'PendingInsert', "Chanel");
-
-    const fileNames = fs.readdirSync(folderPath);
     const jsonFiles = [];
+    try {
+        const folderPath = path.join(app.getAppPath(), 'temp', 'PendingInsert', "Chanel");
 
-    fileNames.forEach((fileName) => {
-        const filePath = path.join(folderPath, fileName);
-        const fileContent = fs.readFileSync(filePath, 'utf-8');
+        const fileNames = fs.readdirSync(folderPath);
 
-        try {
-            const jsonData = JSON.parse(fileContent);
-            jsonFiles.push(jsonData);
-        } catch (error) {
-            console.error(`Error parsing JSON file: ${filePath}`);
-            console.error(error);
-        }
-    });
+        fileNames.forEach((fileName) => {
+            const filePath = path.join(folderPath, fileName);
+            const fileContent = fs.readFileSync(filePath, 'utf-8');
 
-    return jsonFiles;
+            try {
+                const jsonData = JSON.parse(fileContent);
+                jsonFiles.push(jsonData);
+            } catch (error) {
+                console.error(`Error parsing JSON file: ${filePath}`);
+                console.error(error);
+            }
+        });
+
+        return jsonFiles;
+    } catch (error) {
+        console.log(error);
+        return jsonFiles;
+    }
+
 
 };
 ChiaDatalayer.prototype.getChanelsSubscriptionPending = async function () {
-    const folderPath = path.join(app.getAppPath(), 'temp', 'PendingSubscribe', "Chanel");
-
-    const fileNames = fs.readdirSync(folderPath);
     const jsonFiles = [];
+    try {
+        const folderPath = path.join(app.getAppPath(), 'temp', 'PendingSubscribe', "Chanel");
 
-    fileNames.forEach((fileName) => {
-        const filePath = path.join(folderPath, fileName);
-        const fileContent = fs.readFileSync(filePath, 'utf-8');
+        const fileNames = fs.readdirSync(folderPath);
 
-        try {
-            const jsonData = JSON.parse(fileContent);
-            jsonFiles.push(jsonData);
-        } catch (error) {
-            console.error(`Error parsing JSON file: ${filePath}`);
-            console.error(error);
-        }
-    });
+        fileNames.forEach((fileName) => {
+            const filePath = path.join(folderPath, fileName);
+            const fileContent = fs.readFileSync(filePath, 'utf-8');
 
-    return jsonFiles;
+            try {
+                const jsonData = JSON.parse(fileContent);
+                jsonFiles.push(jsonData);
+            } catch (error) {
+                console.error(`Error parsing JSON file: ${filePath}`);
+                console.error(error);
+            }
+        });
+
+        return jsonFiles;
+    } catch (error) {
+        console.log(error);
+        return jsonFiles;
+    }
 
 };
 ChiaDatalayer.prototype.deteleChunkTempFiles = async function (Video) {
@@ -344,12 +245,35 @@ ChiaDatalayer.prototype.deteleChunkTempFiles = async function (Video) {
         console.error('Error al leer el directorio:', error);
     }
 };
+ChiaDatalayer.prototype.deteleTempFiles = async function (Id, Folder = "Insert") {
 
+    const directoryPath = path.join(app.getAppPath(), 'temp', Folder);
+    const pattern = `${Id}`;
+
+    try {
+        const files = fs.readdirSync(directoryPath);
+
+        const matchedFiles = files.filter(file => file.includes(pattern) && file.endsWith('.json'));
+
+        matchedFiles.forEach(file => {
+            const filePath = path.join(directoryPath, file);
+            try {
+                fs.unlinkSync(filePath);
+                console.log('Archivo eliminado:', filePath);
+            } catch (error) {
+                console.error('Error al eliminar el archivo:', filePath, error);
+            }
+        });
+    } catch (error) {
+        console.error('Error al leer el directorio:', error);
+    }
+};
 ChiaDatalayer.prototype.insertNextVideoChunk = async function (Video) {
     return new Promise(async (resolve, reject) => {
         try {
             let Response = {};
             const directoryPath = path.join(app.getAppPath(), 'temp', "Chunk");
+            this.ensureFolderExists(directoryPath);
             const pattern = `VideoFile${Video.Id}_Part_*.json`; //to delete
             // Obtiene el tamaño del archivo en bytes
             const fileSizeInBytes = fs.statSync(Video.VideoPath).size;
@@ -388,7 +312,7 @@ ChiaDatalayer.prototype.insertNextVideoChunk = async function (Video) {
             if (temTimestampZero) {
                 Response = {
                     IsCompleted: false,
-                    message: `${Index2Continue} / ${totalChunks} processed`,
+                    message: Index2Continue == totalChunks ? "Validating last transaction" : `${Index2Continue} / ${totalChunks} processed`,
                     status: "success"
                 }
                 resolve(Response); // Resuelve la promesa con el nombre del archivo generado
@@ -494,6 +418,7 @@ ChiaDatalayer.prototype.sendVideoChunks = async function (Video) {
     return new Promise(async (resolve, reject) => {
         try {
             const directoryPath = path.join(app.getAppPath(), 'temp', "Chunk");
+            this.ensureFolderExists(directoryPath);
             const pattern = `VideoFile${Video.Id}_Part_*.json`; //to delete
             // Obtiene el tamaño del archivo en bytes
             const fileSizeInBytes = fs.statSync(Video.VideoPath).size;
@@ -630,13 +555,13 @@ ChiaDatalayer.prototype.insertChanelDetails = async function (chanel) {
             }
         ]
     };
-
-    const filePath = path.join(app.getAppPath(), 'temp', "Insert", `insert_${chanel.Id}.json`);
+    const folderPath = path.join(app.getAppPath(), 'temp', "Insert");
+    const filePath = path.join(folderPath, `insert_${chanel.Id}_${this.uId()}.json`);
+    this.ensureFolderExists(folderPath);
     const jsonData = JSON.stringify(Jsonobject, null, 2);
     fs.writeFileSync(filePath, jsonData, 'utf8');
 
     let OutputCmd = await this.runCommand(`chia rpc data_layer batch_update  -j ${filePath}`);
-    fs.unlinkSync(filePath);
     return OutputCmd;
 };
 ChiaDatalayer.prototype.getChunk = async function (IdVideo, Part, TotalChunks) {
@@ -648,6 +573,7 @@ ChiaDatalayer.prototype.getChunk = async function (IdVideo, Part, TotalChunks) {
             "root_hash": Output.root_history[Part].root_hash
         };
         const folderPath = path.join(app.getAppPath(), 'temp', "CurrentPlayer");
+        this.ensureFolderExists(folderPath);
         const filePath = path.join(folderPath, Output.root_history[Part].root_hash + '_Part' + Part + '_p.json');
         const filePathOut = path.join(folderPath, Output.root_history[Part].root_hash + '_Part' + Part + '_out.json');
         const json = JSON.stringify(Parameters, null, 2);
@@ -698,13 +624,13 @@ ChiaDatalayer.prototype.insertVideoDetails = async function (Video) {
             "value": this.stringToHex(JSON.stringify(VideoDetails))
         }]
     };
-
-    const filePath = path.join(app.getAppPath(), 'temp', "Insert", `insert_${Video.Id}.json`);
+    const folderPath = path.join(app.getAppPath(), 'temp', "Insert");
+    const filePath = path.join(folderPath, `insert_${Video.Id}_${this.uId()}.json`);
+    this.ensureFolderExists(folderPath);
     const jsonData = JSON.stringify(Jsonobject, null, 2);
     fs.writeFileSync(filePath, jsonData, 'utf8');
 
     let OutputCmd = await this.runCommand(`chia rpc data_layer batch_update  -j ${filePath}`);
-    fs.unlinkSync(filePath);
     return OutputCmd;
 };
 ChiaDatalayer.prototype.insertVideoFile = async function (Video) {
@@ -724,6 +650,7 @@ ChiaDatalayer.prototype.getVideoFile = async function (IdVideo) {
                 "root_hash": Output.root_history[i].root_hash
             };
             const folderPath = path.join(app.getAppPath(), 'temp');
+            this.ensureFolderExists(folderPath);
             const filePath = path.join(folderPath, Output.root_history[i].root_hash + '_p.json');
             const filePathOut = path.join(folderPath, Output.root_history[i].root_hash + '_out.json');
             const json = JSON.stringify(Parameters, null, 2);
@@ -756,8 +683,9 @@ ChiaDatalayer.prototype.getVideoInfo = async function (IdVideo) {
         "key": KeyIdStore
     };
     const folderPath = path.join(app.getAppPath(), 'temp', "Video");
-    const filePath = path.join(folderPath, KeyString + '.json');
-    const filePathOut = path.join(folderPath, KeyString + '_out.json');
+    this.ensureFolderExists(folderPath);
+    const filePath = path.join(folderPath, "Get_" + IdVideo + '_' + this.uId() + '.json');
+    const filePathOut = path.join(folderPath, "Get_" + IdVideo + '_' + this.uId() + '_out.json');
     const json = JSON.stringify(Parameters, null, 2);
     fs.writeFileSync(filePath, json);
     let OutputCmddata = await this.runCommand(`chia rpc data_layer get_value -j ${filePath} > ${filePathOut}`);
@@ -775,6 +703,8 @@ ChiaDatalayer.prototype.getVideoInfo = async function (IdVideo) {
 ChiaDatalayer.prototype.getChanelVideosFromChain = async function (idChanel) {
     let Videos = [];
     let OutputCmd = await this.runCommand(`chia data get_keys --id ${idChanel}`);
+    const folderPath = path.join(app.getAppPath(), 'temp', "Chanel");
+    this.ensureFolderExists(folderPath);
     if (OutputCmd.keys !== undefined) {
         for (let i = 0; i < OutputCmd.keys.length; i++) {
             let KeyString = this.hexToString(OutputCmd.keys[i].replace("0x", ""));
@@ -786,9 +716,8 @@ ChiaDatalayer.prototype.getChanelVideosFromChain = async function (idChanel) {
                     "id": idChanel,
                     "key": OutputCmd.keys[i]
                 };
-                const folderPath = path.join(app.getAppPath(), 'temp', "Chanel");
-                const filePath = path.join(folderPath, KeyString + '.json');
-                const filePathOut = path.join(folderPath, KeyString + '_out.json');
+                const filePath = path.join(folderPath, KeyString + '_' + this.uId() + '.json');
+                const filePathOut = path.join(folderPath, KeyString + '_' + this.uId() + '_out.json');
                 const json = JSON.stringify(Parameters, null, 2);
                 fs.writeFileSync(filePath, json);
                 let OutputCmddata = await this.runCommand(`chia rpc data_layer get_value -j ${filePath} > ${filePathOut}`);
@@ -807,8 +736,9 @@ ChiaDatalayer.prototype.getChanelVideosFromChain = async function (idChanel) {
         }
     }
     if (Videos.length > 0) {
-
-        const filePath = path.join(app.getAppPath(), 'temp', "Chanel", `Chanel_${idChanel}.json`);
+        const folderPath = path.join(app.getAppPath(), 'temp', "Chanel");
+        const filePath = path.join(folderPath, `Chanel_${idChanel}.json`);
+        this.ensureFolderExists(folderPath);
         const writeStream = fs.createWriteStream(filePath);
         writeStream.write(JSON.stringify(Videos, null, 2));
     }
@@ -827,25 +757,28 @@ ChiaDatalayer.prototype.getChanelVideos = async function (idChanel, _fromChain =
 }
 ChiaDatalayer.prototype.getChanelVideosPending = async function (idChanel) {
     const folderPath = path.join(app.getAppPath(), 'temp', 'PendingInsert', "Video");
-
-    const fileNames = fs.readdirSync(folderPath);
     const jsonFiles = [];
 
-    fileNames.forEach((fileName) => {
-        const filePath = path.join(folderPath, fileName);
-        const fileContent = fs.readFileSync(filePath, 'utf-8');
+    try {
+        const fileNames = fs.readdirSync(folderPath);
+        fileNames.forEach((fileName) => {
+            const filePath = path.join(folderPath, fileName);
+            const fileContent = fs.readFileSync(filePath, 'utf-8');
 
-        try {
-            const jsonData = JSON.parse(fileContent);
-            if (jsonData.IdChanel === idChanel) {
-                jsonFiles.push(jsonData);
+            try {
+                const jsonData = JSON.parse(fileContent);
+                if (jsonData.IdChanel === idChanel) {
+                    jsonFiles.push(jsonData);
+                }
+            } catch (error) {
+                console.error(`Error parsing JSON file: ${filePath}`);
+                console.error(error);
             }
-            jsonFiles.push(jsonData);
-        } catch (error) {
-            console.error(`Error parsing JSON file: ${filePath}`);
-            console.error(error);
-        }
-    });
+        });
+
+    } catch (e) {
+        console.log(e);
+    }
 
     return jsonFiles;
 }
@@ -985,6 +918,7 @@ ChiaDatalayer.prototype.createTempFileStore = async function (DataObject, Type, 
 
     try {
         const directoryPath = path.join(app.getAppPath(), 'temp', PendingType, Type);
+        this.ensureFolderExists(directoryPath);
         const filePath = path.join(directoryPath, DataObject.Id + '.json');
         const data = JSON.stringify(DataObject);
 
@@ -1002,7 +936,9 @@ ChiaDatalayer.prototype.createTempFileStore = async function (DataObject, Type, 
 
 };
 ChiaDatalayer.prototype.insertToLocalChanelsFile = async function (Chanel) {
-    const filePath = path.join(app.getAppPath(), 'temp', 'Chanel', 'Chanels.json');
+    const folderPath = path.join(app.getAppPath(), 'temp', 'Chanel');
+    this.ensureFolderExists(folderPath);
+    const filePath = path.join(folderPath, 'Chanels.json');
 
     let data = [];
     if (fs.existsSync(filePath)) {
@@ -1015,9 +951,22 @@ ChiaDatalayer.prototype.insertToLocalChanelsFile = async function (Chanel) {
     const jsonActualizado = JSON.stringify(data, null, 2);
     fs.writeFileSync(filePath, jsonActualizado, 'utf-8');
 };
+ChiaDatalayer.prototype.uId = function () {
+    let uuid = '';
+    const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+    const length = 6;
 
+    for (let i = 0; i < length; i++) {
+        const randomIndex = Math.floor(Math.random() * characters.length);
+        uuid += characters.charAt(randomIndex);
+    }
+
+    return uuid;
+}
 ChiaDatalayer.prototype.insertToLocalChanelsVideoFile = async function (Video) {
-    const filePath = path.join(app.getAppPath(), 'temp', 'Chanel', `Chanel_${Video.IdChanel}.json`);
+    const folderPath = path.join(app.getAppPath(), 'temp', 'Chanel');
+    this.ensureFolderExists(folderPath);
+    const filePath = path.join(folderPath, `Chanel_${Video.IdChanel}.json`);
 
     let data = [];
     if (fs.existsSync(filePath)) {
@@ -1035,6 +984,7 @@ ChiaDatalayer.prototype.deleteTempFileStore = async function (DataObject, Type, 
     const filePath = path.join(app.getAppPath(), 'temp', PendingType, Type, DataObject.Id + '.json');
     try {
         await fs.promises.unlink(filePath);
+        this.deteleTempFiles(DataObject.Id);
         if (Type == "Chanel") {
             let ChainChanel = await this.getChanelFromChain(DataObject.Id);
             if (ChainChanel != null) {
@@ -1083,7 +1033,7 @@ ChiaDatalayer.prototype.checkPrerequisites = async function (port = 8575) {
         }
     }
     let IsFileServerActive = await this.runCommand("chia start data_layer_http");
-    if(IsFileServerActive.message !== undefined && !IsFileServerActive.message.includes("Already running") && !IsFileServerActive.message.includes("chia_data_layer_http: started")){
+    if (IsFileServerActive.message !== undefined && !IsFileServerActive.message.includes("Already running") && !IsFileServerActive.message.includes("chia_data_layer_http: started")) {
         return {
             status: "error",
             message: "Please Enable File Server 'chia start data_layer_http' or Go to Settings ->Data Layer ->Enable File Server Propagation"
@@ -1127,7 +1077,14 @@ ChiaDatalayer.prototype.isChiaInstalled = function () {
         }
     }
 };
-
+ChiaDatalayer.prototype.ensureFolderExists = function (folderPath) {
+    if (!fs.existsSync(folderPath)) {
+        fs.mkdirSync(folderPath, {
+            recursive: true
+        });
+        console.log(`Temp created: ${folderPath}`);
+    }
+}
 ChiaDatalayer.prototype.calculateNumberOfChunks = function (fileSizeMB, chunkSizeMB) {
     return Math.ceil(fileSizeMB / chunkSizeMB);
 }
