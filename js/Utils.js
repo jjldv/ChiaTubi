@@ -1,6 +1,6 @@
 function Utils() {}
 Utils.prototype.showLoading = function (message = "Loading...") {
-    const existingLoading = document.getElementById('loading-backdrop');
+    const existingLoading = document.getElementById('loading-backdropcss');
     if (existingLoading) {
         const messageElement = existingLoading.querySelector('.loading-message');
         if (messageElement) {
@@ -10,8 +10,8 @@ Utils.prototype.showLoading = function (message = "Loading...") {
     }
 
     const backdrop = document.createElement('div');
-    backdrop.id = 'loading-backdrop';
-    backdrop.className = 'loading-backdrop';
+    backdrop.id = 'loading-backdropcss';
+    backdrop.className = 'loading-backdropcss';
 
     const container = document.createElement('div');
     container.className = 'loading-container';
@@ -32,15 +32,21 @@ Utils.prototype.showLoading = function (message = "Loading...") {
 }
 
 Utils.prototype.hideLoading = function () {
-    const backdrop = document.getElementById('loading-backdrop');
+    const backdrop = document.getElementById('loading-backdropcss');
     if (backdrop) {
         document.body.removeChild(backdrop);
     }
-    const elements = document.getElementsByClassName("modal-backdrop");
-    while (elements.length > 0) {
-        elements[0].parentNode.removeChild(elements[0]);
-    }
+
 }
+Utils.prototype.showAlert = function (title,message, type = 'error') {
+    Swal.fire({
+      title: title,
+      text: message,
+      icon: type,
+      confirmButtonText: 'Ok',
+      
+    });
+  }
 Utils.prototype.sleep = function (ms) {
     return new Promise(resolve => setTimeout(resolve, ms));
 }

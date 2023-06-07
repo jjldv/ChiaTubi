@@ -1,0 +1,40 @@
+<div class="modal fade" id="AddVideoModal">
+    <div class="modal-dialog ">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Add Video</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+            </div>
+            <div class="modal-body">
+                <div class="row" id="ConainerAddVideo">
+                    <div class="col-lg-12" style="text-align: center;display: none; " id="ContChanelNameAddVideo">
+                        <label for="ChanelNameAdd">On Chanel</label>
+                        <h3 id="ChanelNameAddVideo"></h3>
+                        <label id="StoreId" style="font-size: 10px;"></label>
+
+                    </div>
+                    <div class="col-lg-12" style="text-align: center;">
+                        <img id="previewVideoImage" src="img/imgplaceholder.png" alt="Image preview..." >
+                    </div>
+                    <br>
+                    <div class="col-lg-12" style="text-align: center;">
+                        <button class="btn btn-primary" id="BtnSelectVideoFile">Select Video File (mp4)</button>
+                        <h3 id="FileNameAddVideo"></h3>
+                    </div>
+                    <br>
+                    <div class="col-lg-12" style="text-align: center;">
+                        <label for="videoName">Video Name</label>
+                        <input type="text" id="videoName" placeholder="Video Name" class="form-control">
+                    </div>
+                    <div class="col-lg-12" style="text-align: center;">
+                        <label for="Fee">Fee in XCH</label>
+                        <input type="number" id="FeeAddVideo" placeholder="Fee" value="0" max=".5" class="form-control">
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-primary" id="BtnAddVideoModal" >Add Video (1 mojo)</button>
+            </div>
+        </div>
+    </div>
+</div>

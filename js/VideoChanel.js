@@ -132,72 +132,8 @@ VideoChanel.prototype.hexToBytes = function (hex) {
     }
     return bytes;
 };
-VideoChanel.prototype.SaveAsMP4 = async function () {
-    const chunks = [];
-    let i = 1;
 
-    while (i <= this.TotalChunks) {
-        let chunkHex = await window.electronAPI.GetChunk(this.Id, i, this.TotalChunks);
-        if (chunkHex === null) {
-            console.log("Chunk not found");
-            break; // Salir del bucle while
-        }
 
-        console.log("Chunk found " + i + " of " + this.TotalChunks);
-        chunks.push(chunkHex);
-        i++; // Incrementar el contador
-    }
-
-    if (chunks.length === 0) {
-        console.log("No chunks available");
-        return;
-    }
-
-    const concatenatedChunks = chunks.join('');
-    const chunkBytes = this.hexToBytes(concatenatedChunks);
-
-    // Crear un Blob a partir de los bytes del video
-    const blob = new Blob([chunkBytes], {
-        type: 'video/mp4'
-    });
-
-    // Crear una URL para el Blob y generar un enlace de descarga
-    const downloadLink = document.createElement('a');
-    downloadLink.href = URL.createObjectURL(blob);
-    downloadLink.download = 'video.mp4';
-    downloadLink.click();
-};
-VideoChanel.prototype.SaveConcatenatedChunks = async function () {
-    const chunks = [];
-    let i = 1;
-
-    while (i <= this.TotalChunks) {
-        let chunkHex = await window.electronAPI.GetChunk(this.Id, i, this.TotalChunks);
-        if (chunkHex === null) {
-            console.log("Chunk not found");
-            break; // Salir del bucle while
-        }
-
-        console.log("Chunk found " + i + " of " + this.TotalChunks);
-        chunks.push(chunkHex);
-        i++; // Incrementar el contador
-    }
-
-    if (chunks.length === 0) {
-        console.log("No chunks available");
-        return;
-    }
-
-    const concatenatedChunks = chunks.join('');
-    const blob = new Blob([concatenatedChunks], {
-        type: 'text/plain'
-    });
-
-    const downloadLink = document.createElement('a');
-    downloadLink.href = URL.createObjectURL(blob);
-    downloadLink.download = 'concatenatedChunks.txt';
-    downloadLink.click();
-};
 
 VideoChanel.prototype.LoadChanel = async function () {
     util.showLoading();

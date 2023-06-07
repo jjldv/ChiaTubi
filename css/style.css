@@ -290,7 +290,14 @@ footer {
 /*loading*/
 /* Estilos para el fondo del modal */
 /* Estilos para el fondo del modal */
-.loading-backdrop {
+.swal2-modal{
+    background: gray;
+    color: white;
+}
+.swal2-confirm{
+    background: #495057;
+}
+.loading-backdropcss {
     position: fixed;
     top: 0;
     left: 0;
@@ -334,10 +341,7 @@ footer {
 }
 
 /*end loading*/
-#BtnCreateChanelModal,
-#BtnAddVideoModal,#BtnSubscribeChanelModal {
-    display: none;
-}
+
 
 .card-title {
     color: #fff;
@@ -359,8 +363,9 @@ footer {
     --bs-btn-border-color: gray;
 }
 
-#preview {
+#preview,#previewVideoImage {
     cursor: pointer;
+    max-height: 300px;
 }
 
 #preview:hover {

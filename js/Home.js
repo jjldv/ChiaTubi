@@ -4,25 +4,19 @@ function Home() {
     this.IsLogEnabled = true;
 }
 Home.prototype.Init = async function () {
-    let ModalCreateChanel = new bootstrap.Modal(document.getElementById('CreateChanelModal'));
-    ModalCreateChanel._element.addEventListener('hidden.bs.modal', function () {
-        // Restablece los valores de los inputs
-        document.getElementById('chanelName').value = '';
-        document.getElementById('Fee').value = '0';
-        document.getElementById('preview').src = "img/imgplaceholder.png";
-        this.ChanelImagePath = null;
-    })
-    let ModalSubscribeChanel = new bootstrap.Modal(document.getElementById('SubscribeChanelModal'));
-    ModalSubscribeChanel._element.addEventListener('hidden.bs.modal', function () {
-        document.getElementById('IdChanelSubscribe').value = '';
-    })
-    var btnCreateChanelModal = document.getElementById('BtnCreateChanelModal');
-    var btnSubscribeChanelModal = document.getElementById('BtnSubscribeChanelModal');
-    var btnAddVideoModal = document.getElementById('BtnAddVideoModal');
-    btnCreateChanelModal.style.display = 'block';
-    btnSubscribeChanelModal.style.display = 'block';
-    btnAddVideoModal.style.display = 'none';
-    this.LoadChanels();
+    // let ModalCreateChanel = new bootstrap.Modal(document.getElementById('CreateChanelModal'));
+    // ModalCreateChanel._element.addEventListener('hidden.bs.modal', function () {
+    //     // Restablece los valores de los inputs
+    //     document.getElementById('chanelName').value = '';
+    //     document.getElementById('Fee').value = '0';
+    //     document.getElementById('preview').src = "img/imgplaceholder.png";
+    //     this.ChanelImagePath = null;
+    // })
+    // let ModalSubscribeChanel = new bootstrap.Modal(document.getElementById('SubscribeChanelModal'));
+    // ModalSubscribeChanel._element.addEventListener('hidden.bs.modal', function () {
+    //     document.getElementById('IdChanelSubscribe').value = '';
+    // })
+    // this.LoadChanels();
 }
 Home.prototype.SelectChanelImage = async function () {
     let FilePath = await window.electronAPI.openFile("Profile Image", "jpg");

@@ -5,6 +5,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="stylesheet" href="node_modules/bootstrap/dist/css/bootstrap.min.css">
+    <link href="node_modules/sweetalert2/dist/sweetalert2.css" rel="stylesheet" />
     <link href="css/style.css" rel="stylesheet" />
     <title>ChiaTubi</title>
 
@@ -19,12 +20,14 @@
             </div>
             <nav class="main-nav">
                 <a href="#AppView" onclick="util.GoHome();">Home</a>
-                <a href="#"  id="BtnReturnToChanel" ></a>
+                <a href="#">Videos</a>
+                <a href="#">Channels</a>
             </nav>
             <nav class="sub-nav">
-                <a href="#" class="BtnHead" id="BtnSubscribeChanelModal" data-bs-toggle="modal" data-bs-target="#SubscribeChanelModal">Subscribe Chanel</a>
                 <a href="#" class="BtnHead" id="BtnCreateChanelModal" data-bs-toggle="modal" data-bs-target="#CreateChanelModal">Create Chanel</a>
-                <a href="#" class="BtnHead" id="BtnAddVideoModal" data-bs-toggle="modal" data-bs-target="#AddVideoModal">Add Video</a>
+                <a href="#" class="BtnHead" id="BtnSubscribeChanelModal" data-bs-toggle="modal" data-bs-target="#SubscribeChanelModal">Subscribe Chanel</a>
+                <a href="#" class="BtnHead" id="BtnOpenAddVideoModal" >Add Video</a>
+                <a href="#" class="BtnHead" id="BtnSubscribeVideoModal" data-bs-toggle="modal" data-bs-target="#CreateChanelModal">Subscribe Video</a>
             </nav>
         </header>
         <!-- END OF HEADER -->
@@ -52,29 +55,12 @@
             <p>&copy 2023 ChiaTubi NOT Inc</p>
             <p>MrDennis</p>
         </footer>
-
         <script src="node_modules/bootstrap/dist/js/bootstrap.bundle.js"></script>
+        <script src="node_modules/sweetalert2/dist/sweetalert2.all.js"></script>
         <script src="js/Home.js"></script>
         <script src="js/Chanel.js"></script>
+        <script src="js/Video.js"></script>
         <script src="js/VideoChanel.js"></script>
         <script src="js/Utils.js"></script>
-        <script>
-            let AppView = {};
-            let util = new Utils();
-            window.addEventListener('load', async  ()=> {
-                util.showLoading("Checking Prerequisites...");
-                let IsChiaInstalled = await window.electronAPI.CheckPrerequisites();
-                util.hideLoading();
-                console.log(IsChiaInstalled);
-                if (IsChiaInstalled.status !== undefined && IsChiaInstalled.status === "success") {
-                    util.GoHome();
-                    return;
-                } 
-                if(IsChiaInstalled.status !== undefined && IsChiaInstalled.status === "error"){
-                    alert(IsChiaInstalled.message);
-                    return;
-                }
-            });
-
-        </script>
+        <script src="js/index.js"></script>
 </body>
