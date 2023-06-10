@@ -11,11 +11,15 @@ const express = require('express');
 const appExpress = express();
 const path = require('path');
 const ChiaDataLayer = require('./ChiaDataLayer');
+const Video = require('./Video');
+const Chanel = require('./Chanel');
 const VideoFile = require('./VideoFile');
 const rangeParser = require('range-parser');
 
 const chiaDataLayer = new ChiaDataLayer();
-let VFile = new VideoFile(0, 0);
+let VFile = new VideoFile();
+let video = new Video();
+let chanel = new Chanel();
 
 
 
@@ -45,18 +49,7 @@ async function FileOpen(event, title, extensions) {
     }
 }
 
-async function PrepareVideo(event, IdVideo, TotalChunks,Size) {
 
-    VFile = new VideoFile(IdVideo, TotalChunks,Size);
-    VFile.LoadVideoAsync();
-    return true;
-}
-async function StopPrepareVideo(event,) {
-
-    VFile.StopLoading = true;
-    VFile.ByteFile = Buffer.alloc(0);
-    return true;
-}
 async function FolderOpen() {
     const options = {
         properties: ['openDirectory']
@@ -83,7 +76,7 @@ function createWindow() {
         webPreferences: {
             nodeIntegration: false, 
             contextIsolation: true, 
-            preload: path.join(__dirname, 'preload.js')
+            preload: path.join(__dirname, 'BackendApi.js')
         }
     });
 
@@ -93,19 +86,23 @@ function createWindow() {
 }
 
 app.whenReady().then(() => {
+    ipcMain.handle('createVideoStore', (event,VideoData)=>{return video.createVideoStore(VideoData);});
+    ipcMain.handle('getPendingVideos', (event)=>{return video.getPending();});
+    ipcMain.handle('getVideos', (event)=>{return video.get();});
+    ipcMain.handle('deletePendingVideo', (event,IdVideo)=>{return video.deletePending(IdVideo);});
+    ipcMain.handle('insertChunk', (event, Video)=> {return video.insertChunk(Video);});
+    ipcMain.handle('insertVideoDetailsInChanel', (event, Video)=> {return  chanel.insertVideoDetails(Video);});
     ipcMain.handle('openFile', FileOpen);
     ipcMain.handle('CreateStore', (event,Fee)=>{return chiaDataLayer.createStore(Fee)});
     ipcMain.handle('IsStoreConfirmed', (event, idStore)=> {return chiaDataLayer.isStoreConfirmed(idStore)});
     ipcMain.handle('IsKeyConfirmed', (event, idStore, key)=> {return  chiaDataLayer.isKeyConfirmed(idStore, key)});
     ipcMain.handle('InsertChanelDetails', (event, chanel) =>{return chiaDataLayer.insertChanelDetails(chanel);});
-    ipcMain.handle('InsertVideoDetails', (event, Video)=> {return  chiaDataLayer.insertVideoDetails(Video);});
     ipcMain.handle('GetChanelVideos', (event, idChanel) =>{return chiaDataLayer.getChanelVideos(idChanel);});
     ipcMain.handle('GetChanelVideosPending', (event, idChanel) =>{return chiaDataLayer.getChanelVideosPending(idChanel);});
-    ipcMain.handle('InsertVideoFile', (event, Video)=> {return chiaDataLayer.insertVideoFile(Video);});
     ipcMain.handle('GetVideoFile', (event, Id) =>{return chiaDataLayer.getVideoFile(Id);});
     ipcMain.handle('GetChunk', (event, IdVideo, ChunkNumber, TotalChunks)=> {return chiaDataLayer.getChunk(IdVideo, ChunkNumber, TotalChunks);});
-    ipcMain.handle('PrepareVideo', PrepareVideo);
-    ipcMain.handle('StopPrepareVideo', StopPrepareVideo);
+    ipcMain.handle('prepareVideo', (event,IdVideo, TotalChunks,Size)=>{VFile.prepareVideo(IdVideo, TotalChunks,Size)});
+    ipcMain.handle('stopPrepareVideo', (event)=>{VFile.stopPrepareVideo()});
     ipcMain.handle('PercentageLoaded', (event)=> {return VFile.percentageLoaded();});
     ipcMain.handle('CreateTempFileStore',(event, Chanel,Type,PendingType)=>{return chiaDataLayer.createTempFileStore(Chanel,Type,PendingType)})
     ipcMain.handle('DeleteTempFileStore',(event, Chanel,Type,PendingType) =>{return chiaDataLayer.deleteTempFileStore(Chanel,Type,PendingType);})
@@ -137,7 +134,7 @@ app.on('window-all-closed', () => {
 
 
 appExpress.get('/CurrentPlayer', (req, res) => {
-    const videoSize = VFile.IsLoaded() ? VFile.ByteFile.length : VFile.SizeInBytes ;
+    const videoSize = VFile.IsLoaded() ? VFile.ByteFile.length : VFile.Size ;
     const range = req.headers.range || 'bytes=0-';
     const parts = rangeParser(videoSize, range, {
         combine: true

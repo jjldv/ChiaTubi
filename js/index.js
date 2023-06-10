@@ -17,18 +17,16 @@ BtnSubscribeVideoModal.addEventListener('click', () => {
     video.showModalSubscribe();
 })
 window.addEventListener('load', async () => {
-    util.GoHome();
-    return
     util.showLoading("Checking Prerequisites...");
-    let IsChiaInstalled = await window.electronAPI.CheckPrerequisites();
+    let IsChiaInstalled = await BackendApi.CheckPrerequisites();
     util.hideLoading();
-    console.log(IsChiaInstalled);
     if (IsChiaInstalled.status !== undefined && IsChiaInstalled.status === "success") {
         util.GoHome();
+        video.loadPending();
         return;
     }
     if (IsChiaInstalled.status !== undefined && IsChiaInstalled.status === "error") {
-        alert(IsChiaInstalled.message);
+        util.showAlert("",IsChiaInstalled.message);
         return;
     }
 });

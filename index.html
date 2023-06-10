@@ -20,31 +20,37 @@
             </div>
             <nav class="main-nav">
                 <a href="#AppView" onclick="util.GoHome();">Home</a>
-                <a href="#">Videos</a>
+                <a href="#" onclick="util.GoVideos();">Videos</a>
                 <a href="#">Channels</a>
+                <a data-bs-toggle="offcanvas" href="#SidePanel" role="button"
+                    aria-controls="SidePanel">Pending <strong id="PendingNumber">(0)</strong></a>
             </nav>
             <nav class="sub-nav">
-                <a href="#" class="BtnHead" id="BtnCreateChanelModal" data-bs-toggle="modal" data-bs-target="#CreateChanelModal">Create Chanel</a>
-                <a href="#" class="BtnHead" id="BtnSubscribeChanelModal" data-bs-toggle="modal" data-bs-target="#SubscribeChanelModal">Subscribe Chanel</a>
-                <a href="#" class="BtnHead" id="BtnOpenAddVideoModal" >Add Video</a>
-                <a href="#" class="BtnHead" id="BtnSubscribeVideoModal" data-bs-toggle="modal" data-bs-target="#CreateChanelModal">Subscribe Video</a>
+                <a href="#" class="BtnHead" id="BtnCreateChanelModal" data-bs-toggle="modal"
+                    data-bs-target="#CreateChanelModal">Create Chanel</a>
+                <a href="#" class="BtnHead" id="BtnSubscribeChanelModal" data-bs-toggle="modal"
+                    data-bs-target="#SubscribeChanelModal">Subscribe Chanel</a>
+                <a href="#" class="BtnHead" id="BtnOpenAddVideoModal">Add Video</a>
+                <a href="#" class="BtnHead" id="BtnSubscribeVideoModal" data-bs-toggle="modal"
+                    data-bs-target="#CreateChanelModal">Subscribe Video</a>
             </nav>
         </header>
         <!-- END OF HEADER -->
         <!-- MAIN CONTAINER -->
         <section id="AppView" class="main-container">
+
             <div class="containerLanding">
                 <img src="img/ChiaTubi.png" alt="Imagen">
-              </div>
+            </div>
         </section>
         <!-- LINKS -->
         <section class="link">
             <div class="logos">
-                
+
             </div>
             <div class="sub-links">
                 <ul>
-                   
+
                 </ul>
             </div>
         </section>
@@ -55,12 +61,27 @@
             <p>&copy 2023 ChiaTubi NOT Inc</p>
             <p>MrDennis</p>
         </footer>
+        <div class="offcanvas offcanvas-start" tabindex="-1" id="SidePanel"
+            aria-labelledby="SidePanelLabel">
+            <div class="offcanvas-header">
+                <h5 class="offcanvas-title" id="SidePanelLabel">Pending</h5>
+                <button type="button" class="btn-close text-reset" data-bs-dismiss="offcanvas"
+                    aria-label="Close"></button>
+            </div>
+            <div class="offcanvas-body">
+                <div id="PendingContainer">
+                   
+                </div>
+
+            </div>
+        </div>
         <script src="node_modules/bootstrap/dist/js/bootstrap.bundle.js"></script>
         <script src="node_modules/sweetalert2/dist/sweetalert2.all.js"></script>
-        <script src="js/Home.js"></script>
+        <script src="js/Utils.js"></script>
         <script src="js/Chanel.js"></script>
         <script src="js/Video.js"></script>
-        <script src="js/VideoChanel.js"></script>
-        <script src="js/Utils.js"></script>
+        <script src="js/HomeView.js"></script>
+        <script src="js/VideoView.js"></script>
+        <script src="js/PlayerView.js"></script>
         <script src="js/index.js"></script>
 </body>

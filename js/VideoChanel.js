@@ -47,7 +47,7 @@ VideoChanel.prototype.GetChunk = function (ChunkIndex) {
     if (this.NextIndexHexBuffer + 1 > ChunkIndex || this.HexBuffer[ChunkIndex - 1] !== undefined)
         return;
     this.ActiveRequests++;
-    window.electronAPI.GetChunk(this.Id, ChunkIndex, this.TotalChunks).then((chunkHex) => {
+    BackendApi.GetChunk(this.Id, ChunkIndex, this.TotalChunks).then((chunkHex) => {
         this.ActiveRequests--;
         if (chunkHex !== null) {
             console.log("Chunk found " + ChunkIndex + " of " + this.TotalChunks);
@@ -83,7 +83,7 @@ VideoChanel.prototype.SetProgressBar = async function () {
         progressBar.innerHTML = Math.floor( this.PercentageLoaded) + '%';
         // Esperar 1 segundo antes de volver a obtener el porcentaje
         await util.sleep(1000);
-        this.PercentageLoaded = await window.electronAPI.PercentageLoaded();
+        this.PercentageLoaded = await BackendApi.PercentageLoaded();
         this.videoElement.setAttribute('max', this.PercentageLoaded);
         console.log(this.PercentageLoaded);
         if (this.PercentageLoaded == 100) {
@@ -108,7 +108,7 @@ VideoChanel.prototype.Init = async function () {
     btnSubscribeChanelModal.style.display = 'none';
     btnCreateChanelModal.style.display = 'none';
     btnAddVideoModal.style.display = 'none';
-    let IsPrepared = await window.electronAPI.PrepareVideo(this.Id, this.TotalChunks, this.Size);
+    let IsPrepared = await BackendApi.PrepareVideo(this.Id, this.TotalChunks, this.Size);
     this.SetProgressBar();
     while (this.PercentageLoaded < 10 && AppView.Id !==undefined && AppView.Id == this.Id) {
         await util.sleep(1000);

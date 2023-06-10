@@ -1,7 +1,14 @@
 // preload.js
 const { contextBridge, ipcRenderer } = require('electron')
 
-contextBridge.exposeInMainWorld('electronAPI', {
+contextBridge.exposeInMainWorld('BackendApi', {
+    createVideoStore: (VideoData) => ipcRenderer.invoke('createVideoStore',VideoData),
+    getPendingVideos: () => ipcRenderer.invoke('getPendingVideos'),
+    getVideos: () => ipcRenderer.invoke('getVideos'),
+    deletePendingVideo: (IdVideo) => ipcRenderer.invoke('deletePendingVideo',IdVideo),
+    insertVideoDetailsInChanel: (Video) => ipcRenderer.invoke('insertVideoDetailsInChanel', Video),
+    insertChunk: (Video) => ipcRenderer.invoke('insertChunk', Video),
+    prepareVideo: (IdVideo,TotalChunks,Size) => ipcRenderer.invoke('prepareVideo', IdVideo,TotalChunks,Size),
     openFile: (title,extensions) => ipcRenderer.invoke('openFile',title,extensions),
     GetChanels: () => ipcRenderer.invoke('GetChanels'),
     GetChanelsPending: () => ipcRenderer.invoke('GetChanelsPending'),
@@ -10,15 +17,12 @@ contextBridge.exposeInMainWorld('electronAPI', {
     IsStoreConfirmed: (idStore) => ipcRenderer.invoke('IsStoreConfirmed', idStore),
     IsKeyConfirmed: (idStore,key) => ipcRenderer.invoke('IsKeyConfirmed', idStore, key),
     InsertChanelDetails: (chanel) => ipcRenderer.invoke('InsertChanelDetails', chanel),
-    InsertVideoDetails: (Video) => ipcRenderer.invoke('InsertVideoDetails', Video),
-    InsertVideoFile: (Video) => ipcRenderer.invoke('InsertVideoFile', Video),
     GetVideoFile: (IdVideo) => ipcRenderer.invoke('GetVideoFile', IdVideo),
     GetChunk: (IdVideo,ChunkNumber,TotalChunks) => ipcRenderer.invoke('GetChunk', IdVideo,ChunkNumber,TotalChunks),
-    PrepareVideo: (IdVideo,TotalChunks,Size) => ipcRenderer.invoke('PrepareVideo', IdVideo,TotalChunks,Size),
     UnsubscribeChanel: (IdChanel) => ipcRenderer.invoke('UnsubscribeChanel', IdChanel),
     SubscribeChanel: (IdChanel) => ipcRenderer.invoke('SubscribeChanel', IdChanel),
     CheckPrerequisites: () => ipcRenderer.invoke('CheckPrerequisites'),
-    StopPrepareVideo: () => ipcRenderer.invoke('StopPrepareVideo'),
+    stopPrepareVideo: () => ipcRenderer.invoke('stopPrepareVideo'),
     PercentageLoaded: () => ipcRenderer.invoke('PercentageLoaded'),
     CreateTempFileStore: (Chanel,Type,PendingType) => ipcRenderer.invoke('CreateTempFileStore', Chanel,Type,PendingType),
     DeleteTempFileStore: (Chanel,Type,PendingType) => ipcRenderer.invoke('DeleteTempFileStore', Chanel,Type,PendingType),

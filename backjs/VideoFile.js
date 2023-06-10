@@ -10,11 +10,10 @@ const {
 } = require('child_process');
 
 
-function VideoFile(IdVideo, TotalChunks, Size) {
+function VideoFile(IdVideo = 0, TotalChunks = 0, Size = 0) {
     this.Id = IdVideo;
     this.TotalChunks = TotalChunks;
     this.Size = Size;
-    this.SizeInBytes = this.Size * 1024 * 1024;
     this.HexBuffer = [];
     this.NextIndexHexBuffer = 0;
     this.ByteFile = Buffer.alloc(0);
@@ -23,7 +22,6 @@ function VideoFile(IdVideo, TotalChunks, Size) {
 
     this.activeProcesses = []
 
-    this.currentTime = 0;
 }
 VideoFile.prototype.IsLoaded = function () {
     return this.NextIndexHexBuffer === this.TotalChunks;
@@ -184,7 +182,25 @@ VideoFile.prototype.cancelGetChunk = function () {
         this.childProcess = null; // Limpiar la referencia al proceso hijo
     }
 };
+VideoFile.prototype.prepareVideo = async function (IdVideo, TotalChunks,Size) {
+    this.Id = IdVideo;
+    this.TotalChunks = TotalChunks;
+    this.Size = Size;
+    this.HexBuffer = [];
+    this.NextIndexHexBuffer = 0;
+    this.ByteFile = Buffer.alloc(0);
+    this.ActiveRequests = 5;
+    this.StopLoading = false;
 
+    this.activeProcesses = []
+    this.LoadVideoAsync();
+    return true;
+}
+VideoFile.prototype.stopPrepareVideo = function () {
+    this.StopLoading = true;
+    this.ByteFile = Buffer.alloc(0);
+    return true;
+}
 VideoFile.prototype.ensureFolderExists = function (folderPath) {
     if (!fs.existsSync(folderPath)) {
         fs.mkdirSync(folderPath, {

@@ -51,7 +51,7 @@ Utils.prototype.sleep = function (ms) {
     return new Promise(resolve => setTimeout(resolve, ms));
 }
 Utils.prototype.loadHTMLFile = async function (filePath, targetElementId = 'AppView') {
-    await window.electronAPI.StopPrepareVideo();
+    await BackendApi.stopPrepareVideo();
     return new Promise((resolve, reject) => {
         fetch(filePath)
             .then(response => response.text())
@@ -75,8 +75,26 @@ Utils.prototype.GoHome = async function () {
     let IsLoaded = await util.loadHTMLFile('view/Home.html')
     util.hideLoading();
     if (IsLoaded) {
-        AppView = new Home();
-        AppView.Init();
+        AppView = new HomeView();
+        AppView.init();
+    }
+}
+Utils.prototype.GoVideos = async function () {
+    util.showLoading();
+    let IsLoaded = await util.loadHTMLFile('view/Video.html')
+    util.hideLoading();
+    if (IsLoaded) {
+        AppView = new VideoView();
+        AppView.init();
+    }
+}
+Utils.prototype.GoPlayer = async function (IdVideo,TotalChunks,VideoName,Size,IdChanel) {
+    util.showLoading();
+    let IsLoaded = await util.loadHTMLFile('view/Player.html')
+    util.hideLoading();
+    if (IsLoaded) {
+        AppView = new PlayerView(IdVideo,TotalChunks,VideoName,Size,IdChanel);
+        AppView.init();
     }
 }
 Utils.prototype.GoChanel = async function (ChanelId, ChanelName) {
@@ -86,6 +104,6 @@ Utils.prototype.GoChanel = async function (ChanelId, ChanelName) {
     util.hideLoading();
     if (IsLoaded) {
         AppView = new Chanel(ChanelId, ChanelName);
-        AppView.Init();
+        AppView.init();
     }
 }

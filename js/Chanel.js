@@ -25,14 +25,14 @@ Chanel.prototype.Init = async function () {
         this.VideoPath = null;
     })
     util.showLoading("Loading Videos...");
-    let VideosPending = await window.electronAPI.GetChanelVideosPending(this.Id);
+    let VideosPending = await BackendApi.GetChanelVideosPending(this.Id);
     console.log(VideosPending);
     for (let i = 0; i < VideosPending.length; i++) {
         this.InsertCardVideo(VideosPending[i]);
         this.ConfirmVideo(VideosPending[i]);
 
     }
-    let Videos = await window.electronAPI.GetChanelVideos(this.Id);
+    let Videos = await BackendApi.GetChanelVideos(this.Id);
 
     for (let i = 0; i < Videos.length; i++) {
         this.InsertCardVideo(Videos[i], true);
@@ -56,7 +56,7 @@ Chanel.prototype.AddVideo = async function () {
     }
     util.showLoading("Registering Video");
 
-    let Response = await window.electronAPI.CreateStore(Video.Fee);
+    let Response = await BackendApi.CreateStore(Video.Fee);
     if (Response.status === "error") {
         util.hideLoading();
         alert(Response.message);
@@ -64,7 +64,7 @@ Chanel.prototype.AddVideo = async function () {
     }
     console.log(Response);
     Video.Id = Response.id;
-    let CreateTemp = await window.electronAPI.CreateTempFileStore(Video,"Video","PendingInsert");
+    let CreateTemp = await BackendApi.CreateTempFileStore(Video,"Video","PendingInsert");
     console.log(CreateTemp);
     this.InsertCardVideo(Video);
     
@@ -80,7 +80,7 @@ Chanel.prototype.ConfirmVideo = async function (Video) {
     let IsVideoStoreConfirmed = false;
     const element = document.getElementById(`Status_${Video.Id}`);
     while (!IsVideoStoreConfirmed) {
-        let RIsConfirmed = await window.electronAPI.IsStoreConfirmed(Video.Id);
+        let RIsConfirmed = await BackendApi.IsStoreConfirmed(Video.Id);
         console.log(RIsConfirmed);
         if (RIsConfirmed.hash === undefined) {
             await util.sleep(1000);
@@ -92,7 +92,7 @@ Chanel.prototype.ConfirmVideo = async function (Video) {
     }
     let IsInserted = false;
     while (!IsInserted &&  AppView instanceof Chanel) {
-        let RIsInserted = await window.electronAPI.InsertVideoFile(Video);
+        let RIsInserted = await BackendApi.InsertVideoFile(Video);
         console.log(RIsInserted);
         if(document.getElementById(`Status_${Video.Id}`))
             document.getElementById(`Status_${Video.Id}`).innerHTML = RIsInserted.message??"Storing Video";
@@ -104,7 +104,7 @@ Chanel.prototype.ConfirmVideo = async function (Video) {
         }
     }
     if(Video.IdChanel === null && AppView instanceof Chanel && IsInserted){
-        let DeleteTemp = await window.electronAPI.DeleteTempFileStore(Video, "Video", "PendingInsert");
+        let DeleteTemp = await BackendApi.DeleteTempFileStore(Video, "Video", "PendingInsert");
         console.log(DeleteTemp);
         return
     }
@@ -115,11 +115,11 @@ Chanel.prototype.ConfirmVideo = async function (Video) {
 
     if(document.getElementById(`Status_${Video.Id}`))
         document.getElementById(`Status_${Video.Id}`).innerHTML = "Adding to Chanel"
-    await window.electronAPI.InsertVideoDetails(Video);
+    await BackendApi.InsertVideoDetails(Video);
     let IsVideoDetailsConfirmed = false;
 
     while (!IsVideoDetailsConfirmed &&  AppView instanceof Chanel) {
-        let RIsConfirmed = await window.electronAPI.IsKeyConfirmed(Video.IdChanel,"Video"+Video.Id);
+        let RIsConfirmed = await BackendApi.IsKeyConfirmed(Video.IdChanel,"Video"+Video.Id);
 
         if (RIsConfirmed.error !== undefined) {
             await util.sleep(2000);
@@ -130,22 +130,22 @@ Chanel.prototype.ConfirmVideo = async function (Video) {
         }
     }
     if(AppView instanceof Chanel && IsVideoDetailsConfirmed){
-        let DeleteTemp = await window.electronAPI.DeleteTempFileStore(Video, "Video", "PendingInsert");
+        let DeleteTemp = await BackendApi.DeleteTempFileStore(Video, "Video", "PendingInsert");
         console.log(DeleteTemp);
 
     }
 }
 Chanel.prototype.SelectVideoImage = async function () {
     this.ImagePath = null;
-    let FilePath = await window.electronAPI.openFile("Profile Image", "jpg");
+    let FilePath = await BackendApi.openFile("Profile Image", "jpg");
     document.getElementById('preview').src = FilePath ?? "img/imgplaceholder.png";
     this.ImagePath = FilePath ?? null;
 }
 Chanel.prototype.SelectVideoFile = async function () {
     this.VideoPath = null;
-    let FilePath = await window.electronAPI.openFile("Mp4 files", "mp4");
+    let FilePath = await BackendApi.openFile("Mp4 files", "mp4");
     this.VideoPath = FilePath;
-    //let FolderOuput = await window.electronAPI.splitFileIntoChunks(FilePath, this.ChunkSize);
+    //let FolderOuput = await BackendApi.splitFileIntoChunks(FilePath, this.ChunkSize);
     //this.Log(FolderOuput);
 }
 Chanel.prototype.GoHome = async function () {
