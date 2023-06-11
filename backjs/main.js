@@ -13,6 +13,7 @@ const path = require('path');
 const ChiaDataLayer = require('./ChiaDataLayer');
 const Video = require('./Video');
 const Chanel = require('./Chanel');
+const Utils = require('./Utils');
 const VideoFile = require('./VideoFile');
 const rangeParser = require('range-parser');
 
@@ -20,6 +21,7 @@ const chiaDataLayer = new ChiaDataLayer();
 let VFile = new VideoFile();
 let video = new Video();
 let chanel = new Chanel();
+let utils = new Utils();
 
 
 
@@ -32,40 +34,6 @@ function SetTitle(event, title) {
         dato: {}
     };
 }
-async function FileOpen(event, title, extensions) {
-    const options = {
-        filters: [{
-            name: title,
-            extensions: [extensions]
-        }]
-    };
-
-    const {
-        canceled,
-        filePaths
-    } = await dialog.showOpenDialog(options);
-    if (!canceled && filePaths.length > 0) {
-        return filePaths[0];
-    }
-}
-
-
-async function FolderOpen() {
-    const options = {
-        properties: ['openDirectory']
-    };
-
-    const {
-        canceled,
-        filePaths
-    } = await dialog.showOpenDialog(options);
-
-    if (!canceled && filePaths.length > 0) {
-        return filePaths[0];
-    }
-    return null;
-}
-
 function createWindow() {
     // Create the browser window.
     const mainWindow = new BrowserWindow({
@@ -82,18 +50,17 @@ function createWindow() {
 
     mainWindow.loadFile('index.html');
     mainWindow.maximize();
-    // mainWindow.webContents.openDevTools();
+    mainWindow.webContents.openDevTools();
 }
 
 app.whenReady().then(() => {
+    ipcMain.handle('openFile', (event,Title,Extension)=>{return utils.openFile(Title,Extension);});
     ipcMain.handle('createVideoStore', (event,VideoData)=>{return video.createVideoStore(VideoData);});
     ipcMain.handle('getPendingVideos', (event)=>{return video.getPending();});
     ipcMain.handle('getVideos', (event)=>{return video.get();});
     ipcMain.handle('deletePendingVideo', (event,IdVideo)=>{return video.deletePending(IdVideo);});
     ipcMain.handle('insertChunk', (event, Video)=> {return video.insertChunk(Video);});
     ipcMain.handle('insertVideoDetailsInChanel', (event, Video)=> {return  chanel.insertVideoDetails(Video);});
-    ipcMain.handle('openFile', FileOpen);
-    ipcMain.handle('CreateStore', (event,Fee)=>{return chiaDataLayer.createStore(Fee)});
     ipcMain.handle('IsStoreConfirmed', (event, idStore)=> {return chiaDataLayer.isStoreConfirmed(idStore)});
     ipcMain.handle('IsKeyConfirmed', (event, idStore, key)=> {return  chiaDataLayer.isKeyConfirmed(idStore, key)});
     ipcMain.handle('InsertChanelDetails', (event, chanel) =>{return chiaDataLayer.insertChanelDetails(chanel);});
@@ -104,17 +71,16 @@ app.whenReady().then(() => {
     ipcMain.handle('prepareVideo', (event,IdVideo, TotalChunks,Size)=>{VFile.prepareVideo(IdVideo, TotalChunks,Size)});
     ipcMain.handle('stopPrepareVideo', (event)=>{VFile.stopPrepareVideo()});
     ipcMain.handle('PercentageLoaded', (event)=> {return VFile.percentageLoaded();});
-    ipcMain.handle('CreateTempFileStore',(event, Chanel,Type,PendingType)=>{return chiaDataLayer.createTempFileStore(Chanel,Type,PendingType)})
-    ipcMain.handle('DeleteTempFileStore',(event, Chanel,Type,PendingType) =>{return chiaDataLayer.deleteTempFileStore(Chanel,Type,PendingType);})
+    ipcMain.handle('unsubscribeVideo', (event,IdStore)=>{ return video.unsubscribeVideo(IdStore) });
     ipcMain.handle('GetChanels', (event)=> {return chiaDataLayer.getChanels();});
     ipcMain.handle('CheckPrerequisites', ()=>{return chiaDataLayer.checkPrerequisites()});
     ipcMain.handle('UnsubscribeChanel', (event,IdChanel)=>{ return chiaDataLayer.unsubscribeChanel(IdChanel) });
     ipcMain.handle('SubscribeChanel', (event,IdChanel)=>{ return chiaDataLayer.subscribeChanel(IdChanel) });
     ipcMain.handle('GetChanelsPending', (event)=> {return chiaDataLayer.getChanelsPending();});
     ipcMain.handle('GetChanelsSubscriptionPending', (event)=> {return chiaDataLayer.getChanelsSubscriptionPending();});
-    ipcMain.handle('openFolder', FolderOpen);
     ipcMain.handle('splitFileIntoChunks', (event, dirName, chunkSizeMB)=> {return chiaDataLayer.splitFileIntoChunks(dirName, chunkSizeMB);});
     ipcMain.handle('reconstructMP4FromChunks', (event, FolderPath, OutputName, totalChunks)=> {return chiaDataLayer.reconstructMP4FromChunks(FolderPath, OutputName, totalChunks);});
+    VFile.stopPrepareVideo();
     createWindow();
 
     app.on('activate', () => {
@@ -134,25 +100,30 @@ app.on('window-all-closed', () => {
 
 
 appExpress.get('/CurrentPlayer', (req, res) => {
-    const videoSize = VFile.IsLoaded() ? VFile.ByteFile.length : VFile.Size ;
-    const range = req.headers.range || 'bytes=0-';
-    const parts = rangeParser(videoSize, range, {
-        combine: true
-    });
+    try{
+        const videoSize = VFile.IsLoaded() ? VFile.ByteFile.length : VFile.Size ;
+        const range = req.headers.range || 'bytes=0-';
+        const parts = rangeParser(videoSize, range, {
+            combine: true
+        });
 
-    const start = parts[0].start;
-    const end = parts[0].end;
-    const chunkSize = (end - start) + 1;
+        const start = parts[0].start;
+        const end = parts[0].end;
+        const chunkSize = (end - start) + 1;
 
-    res.writeHead(206, {
-        'Content-Range': `bytes ${start}-${end}/${videoSize}`,
-        'Accept-Ranges': 'bytes',
-        'Content-Length': chunkSize,
-        'Content-Type': 'video/mp4'
-    });
+        res.writeHead(206, {
+            'Content-Range': `bytes ${start}-${end}/${videoSize}`,
+            'Accept-Ranges': 'bytes',
+            'Content-Length': chunkSize,
+            'Content-Type': 'video/mp4'
+        });
 
-    const videoPart = VFile.ByteFile.slice(start, end + 1);
-    res.end(videoPart);
+        const videoPart = VFile.ByteFile.slice(start, end + 1);
+        res.end(videoPart);
+    }
+    catch(err){
+        console.log(err);
+    }
 });
 
 

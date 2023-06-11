@@ -43,7 +43,8 @@ PlayerView.prototype.setProgressBar = async function () {
     }
 }
 PlayerView.prototype.init = async function () {
-    LblVideoName.innerHTML = this.Name;
+    LblVideoName.innerHTML = `${this.Name}`;
+    LblIdStore.innerHTML = `Id Store: ${this.Id}    <button onclick="util.CopyText('${this.Id}','IconCopyStorePlayer')" data-text="${this.Id}" class="btn btn-primary btn-sm"><i id="IconCopyStorePlayer" title="Copy Store Id" class="bi bi-clipboard bi-sm"></i></button>`;
     
     await BackendApi.prepareVideo(this.Id, this.TotalChunks, this.Size);
     this.setProgressBar();

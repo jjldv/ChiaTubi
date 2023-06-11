@@ -1,7 +1,11 @@
 const fs = require('fs');
 const path = require('path');
-const {app} = require('electron');
-function Utils(){
+const {
+    app,
+    dialog
+} = require('electron');
+
+function Utils() {
 
 }
 Utils.prototype.hexToString = function (hex) {
@@ -24,11 +28,11 @@ Utils.prototype.uId = function () {
 
     return uuid;
 }
-Utils.prototype.createTempJsonFile = async function (Content,FilePath = null,AppPath = app.getAppPath()) {
+Utils.prototype.createTempJsonFile = async function (Content, FilePath = null, AppPath = app.getAppPath()) {
     const folderPath = path.join(AppPath, 'temp');
     this.ensureFolderExists(folderPath);
-    const filePath = FilePath == null ?  path.join(folderPath, "Params_" + this.uId() + '.json'): FilePath;
-    Content = typeof Content === 'object' ? JSON.stringify(Content, null, 2): Content;
+    const filePath = FilePath == null ? path.join(folderPath, "Params_" + this.uId() + '.json') : FilePath;
+    Content = typeof Content === 'object' ? JSON.stringify(Content, null, 2) : Content;
     fs.writeFileSync(filePath, Content);
     return filePath;
 }
@@ -63,5 +67,21 @@ Utils.prototype.hexToBase64 = function (hexString) {
         return null;
     }
 };
+Utils.prototype.openFile = async function ( title, extensions) {
+    const options = {
+        filters: [{
+            name: title,
+            extensions: [extensions]
+        }]
+    };
 
+    const {
+        canceled,
+        filePaths
+    } = await dialog.showOpenDialog(options);
+    if (!canceled && filePaths.length > 0) {
+        return filePaths[0];
+    }
+    return null;
+}
 module.exports = Utils;

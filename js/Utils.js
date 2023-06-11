@@ -1,4 +1,6 @@
-function Utils() {}
+function Utils() {
+    
+}
 Utils.prototype.showLoading = function (message = "Loading...") {
     const existingLoading = document.getElementById('loading-backdropcss');
     if (existingLoading) {
@@ -87,6 +89,17 @@ Utils.prototype.GoVideos = async function () {
         AppView = new VideoView();
         AppView.init();
     }
+}
+Utils.prototype.CopyText = function (text,IdElementIconCopy) {
+    navigator.clipboard.writeText(text)
+    .then(() => {
+        const iconoCopiado = document.getElementById(IdElementIconCopy);
+        iconoCopiado.classList.remove('bi-clipboard');
+        iconoCopiado.classList.add('bi-check2');
+    })
+    .catch((error) => {
+      console.error('Error al copiar el texto: ', error);
+    });
 }
 Utils.prototype.GoPlayer = async function (IdVideo,TotalChunks,VideoName,Size,IdChanel) {
     util.showLoading();

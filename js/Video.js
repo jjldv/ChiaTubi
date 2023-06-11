@@ -222,6 +222,7 @@ Video.prototype.processQueue = async function (Video) {
         await this.processVideo(this.Pending[0]);
     }
     this.setIsProcessingQueue(false);
+    console.log("end processQueue");
 }
 Video.prototype.processVideo = async function (Video) {
     if (this.StopProcessingQueue) {
@@ -235,6 +236,10 @@ Video.prototype.processVideo = async function (Video) {
     if(this.StopProcessingQueue)
         return;
     await this.deletePending(Video.Id);
+    if(document.getElementById('VideoSubscriptions')){
+        let Card = this.cardVideo(Video,true);
+        VideoSubscriptions.insertAdjacentHTML('beforeend', Card);
+    }
 }
 Video.prototype.confirmStore = async function (IdVideo) {
     if(this.StopProcessingQueue){

@@ -49,7 +49,8 @@ HomeView.prototype.CreateChanel = async function () {
     }
     console.log(Response);
     Chanel.Id = Response.id;
-    let CreateTemp = await BackendApi.CreateTempFileStore(Chanel, "Chanel", "PendingInsert");
+    //TODO: sqlite
+    //let CreateTemp = await BackendApi.CreateTempFileStore(Chanel, "Chanel", "PendingInsert");
     console.log(CreateTemp);
     this.InsertCardChanel(Chanel);
     const modal = document.getElementById("CreateChanelModal");

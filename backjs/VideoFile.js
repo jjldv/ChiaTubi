@@ -24,6 +24,8 @@ function VideoFile(IdVideo = 0, TotalChunks = 0, Size = 0) {
 
 }
 VideoFile.prototype.IsLoaded = function () {
+    console.log(this.ByteFile.length);
+    console.log(this.Size);
     return this.NextIndexHexBuffer === this.TotalChunks;
 }
 VideoFile.prototype.percentageLoaded = function () {
@@ -51,10 +53,10 @@ VideoFile.prototype.DeleteCurrentPlayerTemp = async function () {
 VideoFile.prototype.LoadVideoAsync = async function (_indexstart = 0) {
 
     if (_indexstart == 0) {
+        await this.DeleteCurrentPlayerTemp();
         this.ByteFile = Buffer.alloc(0);
         this.HexBuffer = new Array(this.TotalChunks);
         this.NextIndexHexBuffer = _indexstart;
-        await this.DeleteCurrentPlayerTemp();
     }
     this.ActiveRequests = 0;
 

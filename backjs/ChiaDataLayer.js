@@ -34,7 +34,7 @@ ChiaDatalayer.prototype.subscribeChanel = async function (IdChanel) {
             Image: filePath,
             Id: IdChanel
         };
-        this.createTempFileStore(Chan, "Chanel", "PendingSubscribe");
+        //TODO: send to the Chanel class
         return Chan;
     }
     return OutputCmd;
@@ -830,27 +830,7 @@ ChiaDatalayer.prototype.isValidJSON = function (jsonString) {
     }
 }
 
-ChiaDatalayer.prototype.createTempFileStore = async function (DataObject, Type, PendingType = "PendingInsert") {
 
-    try {
-        const directoryPath = path.join(app.getAppPath(), 'temp', PendingType, Type);
-        this.ensureFolderExists(directoryPath);
-        const filePath = path.join(directoryPath, DataObject.Id + '.json');
-        const data = JSON.stringify(DataObject);
-
-        await fs.promises.writeFile(filePath, data);
-        return {
-            status: "success",
-            message: "File created"
-        };
-    } catch (error) {
-        return {
-            status: "error",
-            message: error.message
-        };
-    }
-
-};
 ChiaDatalayer.prototype.insertToLocalChanelsFile = async function (Chanel) {
     const folderPath = path.join(app.getAppPath(), 'temp', 'Chanel');
     this.ensureFolderExists(folderPath);
