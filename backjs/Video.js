@@ -55,6 +55,21 @@ Video.prototype.createVideoStore = async function (VideoData) {
         };
     }
 }
+Video.prototype.setPendingSubscription = async function (Video) {
+    this.dbConnect();
+    const videoPendingInsert = `INSERT INTO Pending (Id, Type, Data) VALUES (?, ?, ?)`;
+    const videoPendingValues = [Video.Id, "VideoSubscription", JSON.stringify(Video)];
+    return new Promise((resolve, reject) => {
+        this.DB.run(videoPendingInsert, videoPendingValues, (err) => {
+            if (err) {
+                resolve(false);
+            } else {
+                resolve(true); 
+            }
+            this.dbDisconnect();
+        });
+    });
+}
 Video.prototype.setPending = async function (Video) {
     this.dbConnect();
     Video.Size = await this.getFileSize(Video.VideoPath);
@@ -62,17 +77,29 @@ Video.prototype.setPending = async function (Video) {
     Video.TotalChunks = Math.ceil(Video.Size / this.ChunkSize);
     Video.ChunkSizeMB = this.ChunkSizeMB;
     Video.ChunkSize = this.ChunkSize;
-
-    const videoPendingInsert = `INSERT INTO VideoPending (Id, Name, IdChanel, Image, ChunkSize, Size, TotalChunks,VideoPath,Fee) VALUES (?, ?, ?, ?, ?, ?, ?,?,?)`;
-
-    const videoPendingValues = [Video.Id, Video.Name, Video.IdChanel, Video.Image, Video.ChunkSize, Video.Size, Video.TotalChunks, Video.VideoPath, Video.Fee];
-
+    const videoPendingInsert = `INSERT INTO Pending (Id, Type, Data) VALUES (?, ?, ?)`;
+    const videoPendingValues = [Video.Id, "VideoInsert", JSON.stringify(Video)];
     return new Promise((resolve, reject) => {
         this.DB.run(videoPendingInsert, videoPendingValues, (err) => {
             if (err) {
                 resolve(false);
             } else {
                 resolve(true); // Resuelve la promesa con true si la inserción fue exitosa
+            }
+            this.dbDisconnect();
+        });
+    });
+};
+Video.prototype.deleteFromDbById = async function (Id) {
+    this.dbConnect();
+    const deleteQuery = 'DELETE FROM Video WHERE Id = ?';
+    const deleteValues = [Id];
+    return new Promise((resolve, reject) => {
+        this.DB.run(deleteQuery, deleteValues, (err) => {
+            if (err) {
+                resolve(false);
+            } else {
+                resolve(true);
             }
             this.dbDisconnect();
         });
@@ -98,18 +125,17 @@ Video.prototype.getPending = function () {
     this.dbConnect();
     return new Promise((resolve, reject) => {
         try {
-            const sql = 'SELECT * FROM VideoPending';
-
+            const sql = 'SELECT * FROM Pending  ';
             this.DB.all(sql, (err, rows) => {
                 if (err) {
-                    console.error('Error al obtener los registros de la tabla VideoPending:', err);
+                    console.error('Error getting Pending records:', err);
                     Response.status = "error";
                     Response.message = err.message;
                     reject(Response);
                     return;
                 }
                 Response.status = "success";
-                Response.Videos = rows;
+                Response.Videos = this.parsePending(rows);
                 Response.message = "Success";
                 resolve(Response);
             });
@@ -121,9 +147,17 @@ Video.prototype.getPending = function () {
             Response.message = ex.message;
             resolve(Response);
         }
-
     });
 };
+Video.prototype.parsePending = function (rows) {
+    let Videos = [];
+    rows.forEach((row) => {
+        let Video = JSON.parse(row.Data);
+        Video.Type = row.Type;
+        Videos.push(Video);
+    });
+    return Videos;
+}
 Video.prototype.countRows = async function () {
     this.dbConnect();
     return new Promise((resolve, reject) => {
@@ -161,6 +195,51 @@ Video.prototype.getInfo = async function (IdStore) {
     Video.Image = this.Util.hexToBase64(Video.Image);
     return Video;
 }
+Video.prototype.unsubscribe = async function (IdStore) {
+    let Response = await this.DL.unsubscribe(IdStore);
+    if (Response.success === undefined || Response.success === false) {
+        return {status: "error", message: "Error unsubscribing"};
+    }
+    this.deleteFromDbById(IdStore);
+    return {status: "success", message: "Unsubscribed"};
+}
+Video.prototype.subscribe = async function (Video) {
+    let isAlreadySubscribed = await this.isAlreadySubscribed(Video.Id);
+    if (isAlreadySubscribed) {
+        return {status: "error", message: "Already subscribed"};
+    }
+    let Response = await this.DL.subscribe(Video.Id);
+    if (Response.success === undefined || Response.success === false) {
+        return {status: "error", message: "Cant subscribe to video, check ID"};
+    }
+    this.setPendingSubscription(Video);
+    return {status: "success", message: "subscribe"};
+}
+Video.prototype.isAlreadySubscribed = async function (IdStore) {
+    this.dbConnect();
+    return new Promise((resolve, reject) => {
+        try {
+            const sql = 'SELECT * FROM Video WHERE Id = ?';
+            const values = [IdStore];
+            this.DB.get(sql, values, (err, row) => {
+                if (err) {
+                    console.error('Error getting Pending records:', err);
+                    resolve(false);
+                    return;
+                }
+                if (row === undefined)
+                    resolve(false);
+                else
+                    resolve(true);
+            })
+        
+            this.dbDisconnect();
+        } catch (ex) {
+            console.log(ex);
+            resolve(false);
+        }
+    });
+}
 Video.prototype.isVideoStore = async function (IdStore) {
     let OutPutKeys = await this.DL.getKeys(IdStore);
     if (OutPutKeys === null || OutPutKeys.keys === undefined)
@@ -179,7 +258,6 @@ Video.prototype.isVideoStore = async function (IdStore) {
 }
 Video.prototype.getFromChain = async function () {
     let Videos = [];
-
     let OutputCmd = await this.DL.getSubscriptions();
     if (OutputCmd.store_ids !== undefined) {
         for (let i = 0; i < OutputCmd.store_ids.length; i++) {
@@ -190,10 +268,20 @@ Video.prototype.getFromChain = async function () {
             if (video === null)
                 continue;
             await this.saveDbLocal(video);
-
         }
     }
     return Videos;
+}
+Video.prototype.getVideoDetails = async function (IdStore) {
+    let IsVideoStore = await this.isVideoStore(IdStore);
+    if (IsVideoStore === false)
+        return {status: "error", message: "Not a video store"};
+    let Video = await this.getInfo(IdStore);
+    if (Video === null)
+        return {status: "error", message: "Error getting video info"};
+    this.saveDbLocal(Video);
+    return {status: "success", message: "Success", Video: Video};
+
 }
 Video.prototype.get = async function (FromChain = false) {
     let Response = {};
@@ -228,19 +316,16 @@ Video.prototype.get = async function (FromChain = false) {
             resolve(Response);
         }
         this.dbConnect();
-
     });
 };
 Video.prototype.deletePending = function (Id) {
     let Response = {};
     return new Promise((resolve, reject) => {
         this.dbConnect();
-
-        const sql = 'DELETE FROM VideoPending WHERE Id = ?';
-
+        const sql = 'DELETE FROM Pending WHERE Id = ?';
         this.DB.run(sql, Id, (err) => {
             if (err) {
-                console.error('Error al eliminar el registro de la tabla VideoPending:', err);
+                console.error('Error on deleting Pending:', err);
                 Response.status = "error";
                 Response.message = err.message;
                 reject(Response);
@@ -253,13 +338,12 @@ Video.prototype.deletePending = function (Id) {
         this.dbDisconnect();
     });
 }
-
 Video.prototype.insertChunk = async function (Video) {
     return new Promise(async (resolve, reject) => {
         try {
             let Response = {};
             const totalChunks = Video.TotalChunks;
-            let Output = await this.DL.runCommand(`chia data get_root_history --id ${Video.Id}`);
+            let Output = await this.DL.getRootHistory(Video.Id);
             if (Output.success !== undefined && Output.success === false) {
                 Response = {
                     IsCompleted: false,
@@ -288,7 +372,7 @@ Video.prototype.insertChunk = async function (Video) {
                     message: Index2Continue == totalChunks ? "Validating last transaction" : `${Index2Continue} / ${totalChunks} processed`,
                     status: "success"
                 }
-                resolve(Response); // Resuelve la promesa con el nombre del archivo generado
+                resolve(Response); 
                 return;
             }
             await this.deteleChunkTempFiles(Video);
@@ -320,7 +404,7 @@ Video.prototype.insertChunk = async function (Video) {
                 }
             }
 
-            resolve(Response); // Resuelve la promesa con el nombre del archivo generado
+            resolve(Response); 
             return;
 
         } catch (error) {
@@ -330,7 +414,7 @@ Video.prototype.insertChunk = async function (Video) {
                 message: `--`,
                 status: "error"
             }
-            resolve(Response); // Rechaza la promesa con el error
+            resolve(Response); 
         }
     });
 }
@@ -338,7 +422,6 @@ Video.prototype.createJsonChunkParam = async function (Video, Index2Continue) {
     const directoryPath = path.join(app.getAppPath(), 'temp', "Chunk");
     this.Util.ensureFolderExists(directoryPath);
     const filePath = path.join(directoryPath, `VideoFile${Video.Id}_Part_${Index2Continue + 1}.json`);
-
     const changelist = [];
     if (Index2Continue === 0) {
         const VideoDetails = await this.prepareDetails(Video);
@@ -350,62 +433,37 @@ Video.prototype.createJsonChunkParam = async function (Video, Index2Continue) {
         };
         changelist.push(objectDetailData);
     }
-
     const objectDelete = {
         action: 'delete',
         key: this.Util.stringToHex(`VideoChunk`)
     };
     changelist.push(objectDelete);
-
     const objectInsert = {
         action: 'insert',
         key: this.Util.stringToHex(`VideoChunk`),
         value: this.Util.stringToHex(`Part_${Index2Continue + 1}|`) + this.getChunkData(Video, Index2Continue).toString('hex'),
     };
     changelist.push(objectInsert);
-
     const jsonData = `{
         "id": "${Video.Id}",
         "fee": "${Video.Fee}",
         "changelist": ${JSON.stringify(changelist, null, 2)}
     }`;
-
     return this.Util.createTempJsonFile(jsonData, filePath);
 }
-Video.prototype.base64ToHex = function (base64String) {
-    // Remove the data URL prefix
-    var base64Data = base64String.replace(/^data:image\/\w+;base64,/, "");
-
-    // Convert the Base64 string to Uint8Array
-    var bytes = Uint8Array.from(atob(base64Data), function (c) {
-        return c.charCodeAt(0);
-    });
-
-    // Convert the Uint8Array to hexadecimal
-    var hexString = Array.from(bytes).map(function (byte) {
-        return ('0' + byte.toString(16)).slice(-2);
-    }).join('');
-
-    return hexString;
-};
 Video.prototype.processImage = async function (FilePath) {
     const img = nativeImage.createFromPath(FilePath);
-
     const anchoOriginal = img.getSize().width;
     const altoOriginal = img.getSize().height;
-
     if (anchoOriginal > 100 && FilePath.toLowerCase().endsWith('.jpg')) {
         const ratio = 100 / anchoOriginal;
         const anchoRedimensionado = 100;
         const altoRedimensionado = Math.round(altoOriginal * ratio);
-
         const imagenRedimensionada = img.resize({
             width: anchoRedimensionado,
             height: altoRedimensionado
         });
-
         const imagenBase64 = imagenRedimensionada.toDataURL();
-
         return imagenBase64;
     } else {
         const imagenBase64 = img.toDataURL();
@@ -421,21 +479,17 @@ Video.prototype.getChunkData = function (Video, chunkIndex) {
 }
 Video.prototype.prepareDetails = async function (Video) {
     let Image = await this.processImage(Video.Image);
-    Image = this.base64ToHex(Image);
+    Image = this.Util.base64ToHex(Image);
     let VideoDetails = Object.assign({}, Video);
     VideoDetails.Image = Image;
     VideoDetails.VideoPath = "----";
     return VideoDetails;
 }
 Video.prototype.deteleChunkTempFiles = async function (Video) {
-
     const directoryPath = path.join(app.getAppPath(), 'temp', 'Chunk');
-
     try {
         const files = fs.readdirSync(directoryPath);
-
         const matchedFiles = files.filter(file => file.startsWith(`VideoFile${Video.Id}_Part_`) && file.endsWith('.json'));
-
         matchedFiles.forEach(file => {
             const filePath = path.join(directoryPath, file);
             try {

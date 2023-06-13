@@ -1,10 +1,8 @@
-let CurrentChanel = null;
+BackendApi.stopPrepareVideo2Play();
 let AppView = {};
 let util = new Utils();
 let video = new Video();
 
-let BtnCreateChanelModal = document.getElementById("BtnCreateChanelModal");
-let BtnSubscribeChanelModal = document.getElementById("BtnSubscribeChanelModal");
 let BtnOpenAddVideoModal = document.getElementById("BtnOpenAddVideoModal");
 let BtnSubscribeVideoModal = document.getElementById("BtnSubscribeVideoModal");
 
@@ -14,11 +12,11 @@ BtnOpenAddVideoModal.addEventListener('click', () => {
     video.openModalAdd();
 });
 BtnSubscribeVideoModal.addEventListener('click', () => {
-    video.showModalSubscribe();
+    video.openModalSubscribe();
 })
 window.addEventListener('load', async () => {
     util.showLoading("Checking Prerequisites...");
-    let IsChiaInstalled = await BackendApi.CheckPrerequisites();
+    let IsChiaInstalled = await BackendApi.checkPrerequisites();
     util.hideLoading();
     if (IsChiaInstalled.status !== undefined && IsChiaInstalled.status === "success") {
         util.GoHome();

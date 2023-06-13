@@ -53,7 +53,7 @@ Utils.prototype.sleep = function (ms) {
     return new Promise(resolve => setTimeout(resolve, ms));
 }
 Utils.prototype.loadHTMLFile = async function (filePath, targetElementId = 'AppView') {
-    await BackendApi.stopPrepareVideo();
+    await BackendApi.stopPrepareVideo2Play();
     return new Promise((resolve, reject) => {
         fetch(filePath)
             .then(response => response.text())

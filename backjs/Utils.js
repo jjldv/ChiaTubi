@@ -8,6 +8,16 @@ const {
 function Utils() {
 
 }
+Utils.prototype.base64ToHex = function (base64String) {
+    var base64Data = base64String.replace(/^data:image\/\w+;base64,/, "");
+    var bytes = Uint8Array.from(atob(base64Data), function (c) {
+        return c.charCodeAt(0);
+    });
+    var hexString = Array.from(bytes).map(function (byte) {
+        return ('0' + byte.toString(16)).slice(-2);
+    }).join('');
+    return hexString;
+};
 Utils.prototype.hexToString = function (hex) {
     var string = '';
     for (var i = 0; i < hex.length; i += 2) {
@@ -84,4 +94,8 @@ Utils.prototype.openFile = async function ( title, extensions) {
     }
     return null;
 }
+Utils.prototype.sleep = function (ms) {
+    return new Promise(resolve => setTimeout(resolve, ms));
+}
+
 module.exports = Utils;

@@ -3,12 +3,14 @@ function Video() {
     this.ModalSubscribe = null;
     this.removeModalAdd = this.removeModalAdd.bind(this);
     this.addVideo = this.addVideo.bind(this);
+    this.subscribe = this.subscribe.bind(this);
     this.selectVideoImage = this.selectVideoImage.bind(this);
     this.selectVideoFile = this.selectVideoFile.bind(this);
     this.removeModalSubscribe = this.removeModalSubscribe.bind(this);
     this.ImagePath = null;
     this.VideoPath = null;
     this.ModalAddBootstrap = null;
+    this.ModalSubscribeBootstrap = null;
     fetch('./view/include/AddVideoModal.html')
         .then(response => response.text())
         .then(html => {
@@ -19,7 +21,7 @@ function Video() {
         .then(response => response.text())
         .then(html => {
             this.ModalSubscribe = this.createDOMElementFromHTML(html);
-            this.ModalSubscribe.addEventListener('hidden.bs.modal', this.removeModalSubscribe);
+            this.ModalSubscribe.addEventListener('hidden.bs.modal', this.removeModalSubscribe.bind(this));
         });
     this.Pending = [];
     this.IsProcessingQueue = false;
@@ -29,7 +31,7 @@ Video.prototype.addVideo = async function () {
     console.log("AddVideo");
     let VidData = {
         Id: null,
-        IdChanel: CurrentChanel?.Id ?? null,
+        IdChanel: null,
         VideoPath: this.VideoPath,
         Image: this.ImagePath,
         Name: null,
@@ -60,17 +62,59 @@ Video.prototype.addVideo = async function () {
     this.Pending.push(VidData);
     this.hideModalAdd();
     util.hideLoading();
-    await util.sleep(5000);
-    this.processQueue(Video);
+    await util.sleep(3000);
+    this.processQueue();
+}
+Video.prototype.subscribe = async function () {
+    console.log("subscribe");
+ 
+    let IdStore = document.getElementById('IdVideoSubscribe').value;
+
+    if (IdStore === "" ) {
+        util.showAlert("", "Id Store required");
+        return;
+    }
+
+    let VidData = {
+        Id: IdStore,
+        IdChanel: null,
+        VideoPath: null,
+        Image: "img/imgplaceholder.png",
+        Name: "----",
+        Fee: 0
+    };
+
+    util.showLoading("Subscribing");
+
+    let Response = await BackendApi.subscribeVideo(VidData);
+    if (Response.status === "error") {
+        util.hideLoading();
+        util.showAlert("", Response.message);
+        return;
+    }
+    let Card = this.cardVideo(VidData);
+    PendingContainer.insertAdjacentHTML('beforeend', Card);
+    this.setPendingNumber();
+    this.Pending.push(VidData);
+    this.ModalSubscribeBootstrap.hide();
+    util.hideLoading();
+    await util.sleep(3000);
+    this.processQueue();
+}
+Video.prototype.unsubscribe = async function (IdVideo) {
+    util.showLoading("Unsubscribing Video");
+    let Response = await BackendApi.unsubscribeVideo(IdVideo);
+    util.hideLoading();
+    if (Response.status === "success" && document.getElementById(`Cont${IdVideo}`) ) {
+        let Card = document.getElementById(`Cont${IdVideo}`);
+        Card.remove();
+        return;
+    }
 }
 Video.prototype.openModalAdd = function () {
     document.body.appendChild(this.ModalAdd);
     this.ModalAddBootstrap = new bootstrap.Modal(this.ModalAdd);
-    if (CurrentChanel !== null) {
-        ContChanelNameAddVideo.style.display = "block";
-        ChanelNameAddVideo.innerHTML = CurrentChanel.Name;
-        StoreId.innerHTML = CurrentChanel.Id;
-    }
+
     let BtnAddVideoModal = this.ModalAdd.querySelector('#BtnAddVideoModal');
     let BtnSelectVideoFile = this.ModalAdd.querySelector('#BtnSelectVideoFile');
     let previewVideoImage = this.ModalAdd.querySelector('#previewVideoImage');
@@ -81,10 +125,15 @@ Video.prototype.openModalAdd = function () {
 
     this.ModalAddBootstrap.show();
 };
-Video.prototype.showModalSubscribe = function () {
+Video.prototype.openModalSubscribe = function () {
     document.body.appendChild(this.ModalSubscribe);
-    var ModalB = new bootstrap.Modal(this.ModalSubscribe);
-    ModalB.show();
+    this.ModalSubscribeBootstrap = new bootstrap.Modal(this.ModalSubscribe);
+    let BtnSubscribeVideo = this.ModalSubscribe.querySelector('#BtnSubscribeVideo');
+    
+    BtnSubscribeVideo.addEventListener('click', this.subscribe);
+
+    this.ModalSubscribeBootstrap.show();
+    
 };
 Video.prototype.hideModalAdd = async function () {
     this.ModalAddBootstrap.hide();
@@ -100,7 +149,6 @@ Video.prototype.removeModalAdd = function () {
     this.ImagePath = null;
     this.VideoPath = null;
     document.getElementById('previewVideoImage').src = "img/imgplaceholder.png";
-    ChanelNameAddVideo.innerHTML = "";
     FileNameAddVideo.innerHTML = "";
     videoName.value = "";
     FeeAddVideo.value = "0";
@@ -110,8 +158,14 @@ Video.prototype.removeModalAdd = function () {
     this.ModalAdd.removeEventListener('hidden.bs.modal', this.removeModalAdd);
 };
 Video.prototype.removeModalSubscribe = function () {
-    document.body.removeChild(this.ModalSubscribe);
-    this.ModalSubscribe.removeEventListener('hidden.bs.modal', this.removeModalSubscribe);
+    let BtnSubscribeVideo = this.ModalSubscribe.querySelector('#BtnSubscribeVideo');
+
+    BtnSubscribeVideo.removeEventListener('click', this.subscribe);
+    IdVideoSubscribe.value = "";
+    this.ModalSubscribeBootstrap.hide();
+    this.ModalSubscribeBootstrap.dispose();
+    document.getElementById(this.ModalSubscribe.id).remove();
+    this.ModalAdd.removeEventListener('hidden.bs.modal', this.removeModalSubscribe);
 }
 
 Video.prototype.createDOMElementFromHTML = function (htmlString) {
@@ -136,11 +190,11 @@ Video.prototype.selectVideoImage = async function () {
 
 }
 Video.prototype.cardVideo = function (Video, IsVideoConfirmed = false) {
-    let BtnRemove = IsVideoConfirmed ? `<button class="btn btn-danger" style="width:100%;" onclick="video.unsubscribe(${Video.Id})">Unsubscribe</button>` : `<button class="btn btn-danger" style="width:100%;" onclick="video.cancelPending('${Video.Id}')">Cancel</button>`;
+    let BtnRemove = IsVideoConfirmed ? `<button class="btn btn-danger" style="width:100%;" onclick="video.unsubscribe('${Video.Id}')">Unsubscribe</button>` : `<button class="btn btn-danger" style="width:100%;" onclick="video.cancelPending('${Video.Id}')">Cancel</button>`;
     let OnclickLoad = IsVideoConfirmed ? `onclick="util.GoPlayer('${Video.Id}',${Video.TotalChunks},'${Video.Name}',${Video.Size},'${Video.IdChanel}')"` : "";
     let CardElement = `
-        <a href="#" id="Cont${Video.Id}" ${OnclickLoad}  title="${Video.Name} - Store Id:${Video.Id}" style="text-decoration:none;text-align:center;">
-            <img src="${Video.Image}" alt="${Video.Name}">
+        <a href="#" id="Cont${Video.Id}"   title="${Video.Name} - Store Id:${Video.Id}" style="text-decoration:none;text-align:center;">
+            <img src="${Video.Image}" ${OnclickLoad} alt="${Video.Name}">
             <div class="card-body">
               <h5 class="card-title-${!IsVideoConfirmed?"pending":""}">${Video.Name}</h5>
               <p class="card-text-${!IsVideoConfirmed?"pending":""}" id="Status_${Video.Id}" style="display:${IsVideoConfirmed ? "none" : "block"}">----</p>
@@ -211,7 +265,7 @@ Video.prototype.setPendingNumber = function (Number) {
     const count = links.length;
     PendingNumber.innerHTML = `(${count})`
 }
-Video.prototype.processQueue = async function (Video) {
+Video.prototype.processQueue = async function () {
     if (this.IsProcessingQueue) {
         console.log("skiped already one processQueue");
         return;
@@ -219,10 +273,39 @@ Video.prototype.processQueue = async function (Video) {
     console.log("procesing...");
     this.setIsProcessingQueue(true);
     while (this.Pending.length > 0 && this.StopProcessingQueue === false) {
-        await this.processVideo(this.Pending[0]);
+        if(this.Pending[0].Type == "VideoInsert")
+            await this.processVideo(this.Pending[0]);
+        else 
+            await this.processSubscription(this.Pending[0]);
     }
     this.setIsProcessingQueue(false);
     console.log("end processQueue");
+}
+Video.prototype.processSubscription = async function (Video) {
+    if (this.StopProcessingQueue) {
+        return;
+    }
+    if (document.getElementById(`Status_${Video.Id}`))
+        document.getElementById(`Status_${Video.Id}`).innerHTML = "Checking Store"
+    let IsVideoStoreConfirmed = false;
+    while (!IsVideoStoreConfirmed && !this.StopProcessingQueue) {
+        let RIsConfirmed = await BackendApi.getVideoDetails(Video.Id);
+        if (RIsConfirmed.status === "error") {
+            await util.sleep(2000);
+        } else {
+            if (document.getElementById(`Status_${Video.Id}`))
+                document.getElementById(`Status_${Video.Id}`).innerHTML = "Confirmed"
+            IsVideoStoreConfirmed = true;
+            Video = RIsConfirmed.Video;
+        }
+    }
+    if (this.StopProcessingQueue)
+        return;
+    await this.deletePending(Video.Id);
+    if (document.getElementById('VideoSubscriptions')) {
+        let Card = this.cardVideo(Video, true);
+        VideoSubscriptions.insertAdjacentHTML('beforeend', Card);
+    }
 }
 Video.prototype.processVideo = async function (Video) {
     if (this.StopProcessingQueue) {
@@ -230,26 +313,24 @@ Video.prototype.processVideo = async function (Video) {
     }
     await this.confirmStore(Video.Id);
     await this.insertChunk(Video);
-    if (Video.IdChanel != null) {
-        await this.insertDetailsInChanel(Video);
-    }
-    if(this.StopProcessingQueue)
+    
+    if (this.StopProcessingQueue)
         return;
     await this.deletePending(Video.Id);
-    if(document.getElementById('VideoSubscriptions')){
-        let Card = this.cardVideo(Video,true);
+    if (document.getElementById('VideoSubscriptions')) {
+        let Card = this.cardVideo(Video, true);
         VideoSubscriptions.insertAdjacentHTML('beforeend', Card);
     }
 }
 Video.prototype.confirmStore = async function (IdVideo) {
-    if(this.StopProcessingQueue){
+    if (this.StopProcessingQueue) {
         return;
     }
     if (document.getElementById(`Status_${IdVideo}`))
         document.getElementById(`Status_${IdVideo}`).innerHTML = "Checking Store"
     let IsVideoStoreConfirmed = false;
-    while (!IsVideoStoreConfirmed) {
-        let RIsConfirmed = await BackendApi.IsStoreConfirmed(IdVideo);
+    while (!IsVideoStoreConfirmed && !this.StopProcessingQueue) {
+        let RIsConfirmed = await BackendApi.isStoreConfirmed(IdVideo);
         if (RIsConfirmed.hash === undefined) {
             await util.sleep(2000);
         } else {
@@ -260,7 +341,7 @@ Video.prototype.confirmStore = async function (IdVideo) {
     }
 }
 Video.prototype.insertChunk = async function (Video) {
-    if(this.StopProcessingQueue){
+    if (this.StopProcessingQueue) {
         return;
     }
     let IsCompleted = false;
@@ -276,42 +357,14 @@ Video.prototype.insertChunk = async function (Video) {
         }
     }
 }
-Video.prototype.insertDetailsInChanel = async function (Video) {
-    if(this.StopProcessingQueue){
-        return;
-    }
-    if (document.getElementById(`Status_${Video.Id}`))
-        document.getElementById(`Status_${Video.Id}`).innerHTML = "Adding to Chanel"
-    
-    let IsDetailInserted = false;
-    while (!IsDetailInserted && !this.StopProcessingQueue) {
-        let RInsert = await BackendApi.insertVideoDetailsInChanel(Video);
-        if (RInsert.success !== undefined && RInsert.success === true) {
-            IsDetailInserted = true;
-        }
-    }
-    let IsVideoDetailsConfirmed = false;
-
-    while (!IsVideoDetailsConfirmed ) {
-        let RIsConfirmed = await BackendApi.IsKeyConfirmed(Video.IdChanel, "Video" + Video.Id);
-
-        if (RIsConfirmed.error !== undefined) {
-            await util.sleep(2000);
-        } else {
-            if (document.getElementById(`Status_${Video.Id}`))
-                document.getElementById(`Status_${Video.Id}`).innerHTML = "Added to Chanel";
-            IsVideoDetailsConfirmed = true;
-        }
-    }
-}
 Video.prototype.setIsProcessingQueue = function (value) {
     this.IsProcessingQueue = value;
     this.handleProcessingQueueChange();
 };
-Video.prototype.handleProcessingQueueChange = async function() {
-    if(this.StopProcessingQueue === true){
+Video.prototype.handleProcessingQueueChange = async function () {
+    if (this.StopProcessingQueue === true) {
         await util.sleep(1000);
         this.StopProcessingQueue = false;
         this.processQueue();
     }
-  };
+};
