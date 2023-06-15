@@ -47,9 +47,10 @@ ChiaDatalayer.prototype.removeStoreFiles = function (Id) {
     }
 }
 ChiaDatalayer.prototype.runCommand = async function (command) {
+    const chiaPath = path.join(process.env.LOCALAPPDATA, 'Programs', 'Chia', 'resources', 'app.asar.unpacked', 'daemon');
     this.log(command);
     return new Promise((resolve, reject) => {
-        exec(command, (error, stdout, stderr) => {
+        exec(`${chiaPath}\\${command}`, (error, stdout, stderr) => {
             if (error) {
                 error.message = this.parseOutput(error.message);
                 resolve(error.message);
@@ -153,6 +154,41 @@ ChiaDatalayer.prototype.isValidJSON = function (jsonString) {
     } catch (error) {
         return false;
     }
+}
+ChiaDatalayer.prototype.addMirror = async function (IdStore, Url,Fee, Amount = 0) {
+
+    let Data = {
+        id: IdStore,
+        fee: Fee,
+        urls: [Url],
+        amount: Amount
+    }
+    let FileParams = await this.Util.createTempJsonFile(Data);
+
+    let Response = await this.runCommand(`chia rpc data_layer add_mirror -j ${FileParams}`);
+    fs.unlinkSync(FileParams);
+    return Response;
+}
+ChiaDatalayer.prototype.deleteMirror = async function (CoinId) {
+    let Data = {
+        coin_id: CoinId,
+        fee: 0,//preventing spend chia
+    }
+    let FileParams = await this.Util.createTempJsonFile(Data);
+    let Response = await this.runCommand(`chia rpc data_layer delete_mirror -j ${FileParams}`);
+    fs.unlinkSync(FileParams);
+    return Response;
+    
+}
+ChiaDatalayer.prototype.getMirrors = async function (IdStore) {
+    let Data = {
+        id: IdStore
+    }
+    let FileParams = await this.Util.createTempJsonFile(Data);
+    let Response = await this.runCommand(`chia rpc data_layer get_mirrors -j ${FileParams}`);
+    fs.unlinkSync(FileParams);
+    return Response;
+
 }
 ChiaDatalayer.prototype.getValue = async function (FileParams,AppPath = app.getAppPath()) {
     try{
@@ -275,18 +311,19 @@ ChiaDatalayer.prototype.isChiaInstalled = function () {
         try {
             fs.accessSync(chiaPath, fs.constants.F_OK);
             process.env.PATH += path.delimiter + chiaPath;
-            console.log(`La ruta ${chiaPath} se ha agregado a las variables de entorno.`);
+            console.log(`The path ${chiaPath} has been added to the environment variables.`);
 
             return {
                 status: 'success',
-                message: `El comando "chia" no está activo, pero la ruta ${chiaPath} se ha agregado a las variables de entorno.`
+                message: `The "chia" command is not active, but the path ${chiaPath} has been added to the environment variables.`
+
             }
         } catch (err) {
             console.error(`La ruta ${chiaPath} no existe.`);
 
             return {
                 status: 'error',
-                message: `El comando "chia" no está activo y la ruta ${chiaPath} no existe.`
+                message: `The "chia" command is not active and the path ${chiaPath} does not exist.`
             }
         }
     }
