@@ -190,14 +190,15 @@ Video.prototype.selectVideoImage = async function () {
 
 }
 Video.prototype.cardVideo = function (Video, IsVideoConfirmed = false) {
+    let FontColor = IsVideoConfirmed ? "white" : "black";
     let BtnRemove = IsVideoConfirmed ? `<button class="btn btn-danger" style="width:100%;" onclick="video.unsubscribe('${Video.Id}')">Unsubscribe</button>` : `<button class="btn btn-danger" style="width:100%;" onclick="video.cancelPending('${Video.Id}')">Cancel</button>`;
     let OnclickLoad = IsVideoConfirmed ? `onclick="util.GoPlayer('${Video.Id}',${Video.TotalChunks},'${Video.Name}',${Video.Size},'${Video.IdChanel}')"` : "";
     let CardElement = `
         <a href="#" id="Cont${Video.Id}"   title="${Video.Name} - Store Id:${Video.Id}" style="text-decoration:none;text-align:center;">
             <img src="${Video.Image}" ${OnclickLoad} alt="${Video.Name}">
             <div class="card-body">
-              <h5 class="card-title-${!IsVideoConfirmed?"pending":""}">${Video.Name}</h5>
-              <p class="card-text-${!IsVideoConfirmed?"pending":""}" id="Status_${Video.Id}" style="display:${IsVideoConfirmed ? "none" : "block"}">----</p>
+              <h5 class="card-title-${!IsVideoConfirmed?"pending":""}" style="color:${FontColor}">${Video.Name}</h5>
+              <p class="card-text-${!IsVideoConfirmed?"pending":""}"  id="Status_${Video.Id}" style="display:${IsVideoConfirmed ? "none" : "block"};color:${FontColor}">----</p>
               ${BtnRemove}
             </div>
         </a>
@@ -289,7 +290,7 @@ Video.prototype.processSubscription = async function (Video) {
         document.getElementById(`Status_${Video.Id}`).innerHTML = "Checking Store"
     let IsVideoStoreConfirmed = false;
     while (!IsVideoStoreConfirmed && !this.StopProcessingQueue) {
-        let RIsConfirmed = await BackendApi.getVideoDetails(Video.Id);
+        let RIsConfirmed = await BackendApi.confirmSubscription(Video.Id);
         if (RIsConfirmed.status === "error") {
             await util.sleep(2000);
         } else {
@@ -313,6 +314,7 @@ Video.prototype.processVideo = async function (Video) {
     }
     await this.confirmStore(Video.Id);
     await this.insertChunk(Video);
+    await this.addMirror(Video);
     
     if (this.StopProcessingQueue)
         return;
@@ -320,6 +322,40 @@ Video.prototype.processVideo = async function (Video) {
     if (document.getElementById('VideoSubscriptions')) {
         let Card = this.cardVideo(Video, true);
         VideoSubscriptions.insertAdjacentHTML('beforeend', Card);
+    }
+}
+Video.prototype.addMirror = async function (Video) {
+    if (this.StopProcessingQueue) {
+        return;
+    }
+    if (document.getElementById(`Status_${Video.Id}`))
+        document.getElementById(`Status_${Video.Id}`).innerHTML = "Adding Mirror"
+    let IsMirroAdded = false;
+    while (!IsMirroAdded && !this.StopProcessingQueue) {
+        let ResponseAdd = await BackendApi.addMirror(Video);
+        if (ResponseAdd.PublicIP === null) {
+            return;
+        }
+        if(ResponseAdd.status === "error"){
+            await util.sleep(2000);
+        }
+        if(ResponseAdd.status === "success"){
+            IsMirroAdded = true;
+        }
+    }
+
+    if (document.getElementById(`Status_${Video.Id}`) && !this.StopProcessingQueue)
+        document.getElementById(`Status_${Video.Id}`).innerHTML = "Confirming Mirror"
+    let IsMirrorConfirmed = false;
+    while (!IsMirrorConfirmed && !this.StopProcessingQueue) {
+        let RIsMirrorAdded = await BackendApi.confirmMirror(Video.Id);
+        if (RIsMirrorAdded.status === "error") {
+            await util.sleep(2000);
+        } else {
+            if (document.getElementById(`Status_${Video.Id}`) && !this.StopProcessingQueue)
+                document.getElementById(`Status_${Video.Id}`).innerHTML = "Mirror Confirmed"
+            IsMirrorConfirmed = true;
+        }
     }
 }
 Video.prototype.confirmStore = async function (IdVideo) {

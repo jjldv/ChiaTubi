@@ -47,6 +47,7 @@ Video.prototype.createVideoStore = async function (VideoData) {
             };
         }
         Response.Video = VideoData;
+        Response.Video.Type = "VideoInsert";
         return Response;
     } catch (ex) {
         return {
@@ -64,7 +65,7 @@ Video.prototype.setPendingSubscription = async function (Video) {
             if (err) {
                 resolve(false);
             } else {
-                resolve(true); 
+                resolve(true);
             }
             this.dbDisconnect();
         });
@@ -198,22 +199,65 @@ Video.prototype.getInfo = async function (IdStore) {
 Video.prototype.unsubscribe = async function (IdStore) {
     let Response = await this.DL.unsubscribe(IdStore);
     if (Response.success === undefined || Response.success === false) {
-        return {status: "error", message: "Error unsubscribing"};
+        return {
+            status: "error",
+            message: "Error unsubscribing"
+        };
     }
+    this.deleteOurMirrors(IdStore);
+    
     this.deleteFromDbById(IdStore);
-    return {status: "success", message: "Unsubscribed"};
+    return {
+        status: "success",
+        message: "Unsubscribed"
+    };
 }
+Video.prototype.deleteOurMirrors = async function (IdStore) {
+    let ResponseMirror = await this.DL.getMirrors(IdStore);
+    if(ResponseMirror.mirrors !== undefined && ResponseMirror.mirrors.length > 0){
+        for(let i = 0; i < ResponseMirror.mirrors.length; i++){
+            if(ResponseMirror.mirrors[i].ours === true){
+                this.DL.deleteMirror( ResponseMirror.mirrors[i].coin_id);
+            }
+        }
+    }
+}
+Video.prototype.getOurMirrorsCoinsId = function () {
+    const mirrors = this.mirrors; // Supongamos que `mirrors` es una propiedad existente en el objeto `Video`
+    if (!mirrors) {
+      return [];
+    }
+  
+    const coinsId = [];
+    for (let i = 0; i < mirrors.length; i++) {
+      if (mirrors[i].ours === true) {
+        coinsId.push(mirrors[i].coin_id);
+      }
+    }
+  
+    return coinsId;
+  }
 Video.prototype.subscribe = async function (Video) {
     let isAlreadySubscribed = await this.isAlreadySubscribed(Video.Id);
     if (isAlreadySubscribed) {
-        return {status: "error", message: "Already subscribed"};
+        return {
+            status: "error",
+            message: "Already subscribed"
+        };
     }
     let Response = await this.DL.subscribe(Video.Id);
+    Video.Fee = 0; //prevent cost on subscribe
     if (Response.success === undefined || Response.success === false) {
-        return {status: "error", message: "Cant subscribe to video, check ID"};
+        return {
+            status: "error",
+            message: "Cant subscribe to video, check ID"
+        };
     }
     this.setPendingSubscription(Video);
-    return {status: "success", message: "subscribe"};
+    return {
+        status: "success",
+        message: "subscribe"
+    };
 }
 Video.prototype.isAlreadySubscribed = async function (IdStore) {
     this.dbConnect();
@@ -232,7 +276,7 @@ Video.prototype.isAlreadySubscribed = async function (IdStore) {
                 else
                     resolve(true);
             })
-        
+
             this.dbDisconnect();
         } catch (ex) {
             console.log(ex);
@@ -272,15 +316,27 @@ Video.prototype.getFromChain = async function () {
     }
     return Videos;
 }
-Video.prototype.getVideoDetails = async function (IdStore) {
+Video.prototype.confirmSubscription = async function (IdStore) {
     let IsVideoStore = await this.isVideoStore(IdStore);
     if (IsVideoStore === false)
-        return {status: "error", message: "Not a video store"};
+        return {
+            status: "error",
+            message: "Not a video store"
+        };
     let Video = await this.getInfo(IdStore);
     if (Video === null)
-        return {status: "error", message: "Error getting video info"};
+        return {
+            status: "error",
+            message: "Error getting video info"
+        };
     this.saveDbLocal(Video);
-    return {status: "success", message: "Success", Video: Video};
+    Video.Fee = 0; //prevent cost on mirror
+    await this.addMirror(Video);
+    return {
+        status: "success",
+        message: "Success",
+        Video: Video
+    };
 
 }
 Video.prototype.get = async function (FromChain = false) {
@@ -318,6 +374,106 @@ Video.prototype.get = async function (FromChain = false) {
         this.dbConnect();
     });
 };
+Video.prototype.addMirror = async function (Video) {
+    const response = await this.DL.getMirrors(Video.Id);
+    const publicIP = await this.Util.getPublicIP();
+    if (!publicIP) {
+        return {
+            status: "error",
+            message: "Error getting public IP",
+            PublicIP: publicIP
+        };
+    }
+    const isMirror = this.checkIfMirror(response.mirrors, publicIP);
+    if (isMirror) {
+        return {
+            status: "success",
+            message: "Mirror already added",
+        }
+    }
+
+    let Response = await this.DL.addMirror(Video.Id, `http://${publicIP}:8575`, Video.Fee);
+    if (Response.success === undefined || Response.success === false) {
+        return {
+            status: "error",
+            message: "Error adding mirror",
+            PublicIP: publicIP
+        };
+    }
+    return {
+        status: "success",
+        message: "Mirror added",
+        PublicIP: publicIP
+    };
+}
+Video.prototype.confirmMirror = async function (IdVideo) {
+    try {
+        const response = await this.DL.getMirrors(IdVideo);
+        const publicIP = await this.Util.getPublicIP();
+        if (!publicIP) {
+            return {
+                status: "error",
+                message: "Error getting public IP",
+                PublicIP: publicIP
+            };
+        }
+        const isMirror = this.checkIfMirror(response.mirrors, publicIP);
+        if (!isMirror) {
+            return {
+                status: "error",
+                message: "Mirror not found",
+                PublicIP: publicIP
+            };
+        }
+        return {
+            status: "success",
+            message: "Mirror found",
+            PublicIP: publicIP
+        };
+    } catch (error) {
+        return {
+            status: "error",
+            message: error.message
+        };
+    }
+}
+Video.prototype.getCoinIdMirror = async function (Mirrors) {
+    try {
+        const publicIP = await this.Util.getPublicIP();
+        if (!publicIP) {
+            return null;
+        }
+
+        const mirrors = Mirrors; 
+        if (!mirrors) {
+            return null;
+        }
+
+        for (let i = 0; i < mirrors.length; i++) {
+            const urls = mirrors[i].urls;
+            if (urls && urls.includes(`http://${publicIP}:8575`)) {
+                return mirrors[i].coin_id;
+            }
+        }
+
+        return null;
+    } catch (error) {
+        console.error('Error al obtener el Coin ID del espejo:', error);
+        return null;
+    }
+}
+Video.prototype.checkIfMirror = function (mirrors, publicIP) {
+    if (!mirrors) {
+        return false;
+    }
+    for (let i = 0; i < mirrors.length; i++) {
+        const urls = mirrors[i].urls;
+        if (urls && urls.includes(`http://${publicIP}:8575`)) {
+            return true;
+        }
+    }
+    return false;
+}
 Video.prototype.deletePending = function (Id) {
     let Response = {};
     return new Promise((resolve, reject) => {
@@ -372,7 +528,7 @@ Video.prototype.insertChunk = async function (Video) {
                     message: Index2Continue == totalChunks ? "Validating last transaction" : `${Index2Continue} / ${totalChunks} processed`,
                     status: "success"
                 }
-                resolve(Response); 
+                resolve(Response);
                 return;
             }
             await this.deteleChunkTempFiles(Video);
@@ -389,7 +545,7 @@ Video.prototype.insertChunk = async function (Video) {
             const filePath = await this.createJsonChunkParam(Video, Index2Continue);
 
             let OutputCmd = await this.DL.batchUpdate(filePath);
-            if (OutputCmd.success === true || OutputCmd.error.startsWith("Key already present")) {
+            if (OutputCmd.success === true) {
                 console.log(`Chunk ${Index2Continue + 1} de ${totalChunks} processed`);
                 Response = {
                     IsCompleted: false,
@@ -404,17 +560,17 @@ Video.prototype.insertChunk = async function (Video) {
                 }
             }
 
-            resolve(Response); 
+            resolve(Response);
             return;
 
         } catch (error) {
             console.log(`Error al generar el archivo JSON: ${error}`);
             let Response = {
                 IsCompleted: false,
-                message: `--`,
+                message: error.message,
                 status: "error"
             }
-            resolve(Response); 
+            resolve(Response);
         }
     });
 }

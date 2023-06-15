@@ -4,13 +4,29 @@ const {
     app,
     dialog
 } = require('electron');
+const Base64 = require('js-base64').Base64;
 
 function Utils() {
 
 }
+Utils.prototype.deleteTempFiles = function (AppPath = app.getAppPath()) {
+    const folderPath = path.join(AppPath, 'temp');
+    if (fs.existsSync(folderPath)) {
+        fs.readdir(folderPath, (err, files) => {
+            if (err) throw err;
+            for (const file of files) {
+                if (file.startsWith('Params') || file.startsWith('get_value')) {
+                    fs.unlink(path.join(folderPath, file), err => {
+                        if (err) throw err;
+                    });
+                }
+            }
+        });
+    }
+}
 Utils.prototype.base64ToHex = function (base64String) {
     var base64Data = base64String.replace(/^data:image\/\w+;base64,/, "");
-    var bytes = Uint8Array.from(atob(base64Data), function (c) {
+    var bytes = Uint8Array.from(Base64.atob(base64Data), function (c) {
         return c.charCodeAt(0);
     });
     var hexString = Array.from(bytes).map(function (byte) {
@@ -77,7 +93,7 @@ Utils.prototype.hexToBase64 = function (hexString) {
         return null;
     }
 };
-Utils.prototype.openFile = async function ( title, extensions) {
+Utils.prototype.openFile = async function (title, extensions) {
     const options = {
         filters: [{
             name: title,
@@ -97,5 +113,14 @@ Utils.prototype.openFile = async function ( title, extensions) {
 Utils.prototype.sleep = function (ms) {
     return new Promise(resolve => setTimeout(resolve, ms));
 }
-
+Utils.prototype.getPublicIP = async function () {
+    try {
+        const response = await fetch('https://api.ipify.org?format=json');
+        const data = await response.json();
+        const publicIP = data.ip;
+        return publicIP;
+    } catch (error) {
+        return null;
+    }
+}
 module.exports = Utils;

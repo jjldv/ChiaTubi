@@ -43,14 +43,17 @@ app.whenReady().then(() => {
     ipcMain.handle('getVideos', (event)=>{return video.get();});
     ipcMain.handle('deletePendingVideo', (event,IdVideo)=>{return video.deletePending(IdVideo);});
     ipcMain.handle('insertChunk', (event, Video)=> {return video.insertChunk(Video);});
+    ipcMain.handle('addMirror', (event, Video)=> {return video.addMirror(Video);});
+    ipcMain.handle('confirmMirror', (event, IdVideo)=> {return video.confirmMirror(IdVideo);});
     ipcMain.handle('isStoreConfirmed', (event, idStore)=> {return chiaDataLayer.isStoreConfirmed(idStore)});
-    ipcMain.handle('prepareVideo2Play', (event,IdVideo, TotalChunks,Size)=>{VFile.prepareVideo2Play(IdVideo, TotalChunks,Size)});
-    ipcMain.handle('stopPrepareVideo2Play', (event)=>{VFile.stopPrepareVideo2Play()});
+    ipcMain.handle('prepareVideo2Play', (event,IdVideo, TotalChunks,Size)=>{return VFile.prepareVideo2Play(IdVideo, TotalChunks,Size)});
+    ipcMain.handle('stopPrepareVideo2Play', (event)=>{return VFile.stopPrepareVideo2Play()});
     ipcMain.handle('videoPercentageLoaded', (event)=> {return VFile.percentageLoaded();});
     ipcMain.handle('unsubscribeVideo', (event,IdStore)=>{ return video.unsubscribe(IdStore) });
     ipcMain.handle('subscribeVideo', (event,IdStore)=>{ return video.subscribe(IdStore) });
-    ipcMain.handle('getVideoDetails', (event,IdVideo)=>{ return video.getVideoDetails(IdVideo) });  
+    ipcMain.handle('confirmSubscription', (event,IdVideo)=>{ return video.confirmSubscription(IdVideo) });  
     VFile.stopPrepareVideo2Play();
+    utils.deleteTempFiles();
     createWindow();
 
     app.on('activate', () => {
