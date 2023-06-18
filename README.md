@@ -123,6 +123,7 @@ IdStore: 1ee342eb6be98dc52840ec5f91a5d29d5937cf766116ce5fb329015b914a57d6
 ## Known Limitations
 
 - Video registration can be slow due to the transaction size of 2 MB each.
+- If Chia DL Crashes, just restart services.
 
 ## Contact
 
