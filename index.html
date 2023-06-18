@@ -5,6 +5,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="stylesheet" href="node_modules/bootstrap/dist/css/bootstrap.min.css">
+    <link rel="stylesheet" href="node_modules/@fortawesome/fontawesome-free/css/all.min.css">
     <link rel="stylesheet" href="node_modules/bootstrap-icons/font/bootstrap-icons.css">
     <link href="node_modules/sweetalert2/dist/sweetalert2.css" rel="stylesheet" />
     <link href="css/style.css" rel="stylesheet" />
@@ -15,14 +16,15 @@
 <body>
     <div class="wrapper">
         <!-- HEADER -->
-        <header>
+        <header style="z-index: 99999 !important;">
             <div class="netflixLogo">
                 <a id="logo" href="#home" onclick="util.GoHome();"><img src="img/ChiaTubi.png" alt="ChiaTubi"></a>
             </div>
             <nav class="main-nav">
-                <a href="#AppView" onclick="util.GoHome();">Home</a>
+                <a href="#" onclick="util.GoHome();">Home</a>
                 <a href="#" onclick="util.GoVideos();">Videos</a>
                 <a data-bs-toggle="offcanvas" href="#SidePanel" role="button" aria-controls="SidePanel">Pending <strong id="PendingNumber">(0)</strong></a>
+                <a href="#" id="MyIP">My IP: ___.___.___.___</a>
             </nav>
             <nav class="sub-nav">
                 <a href="#" class="BtnHead" id="BtnOpenAddVideoModal">Add Video</a>

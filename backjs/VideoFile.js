@@ -6,7 +6,7 @@ const {
     app
 } = require('electron');
 const {
-    fork
+    spawn
 } = require('child_process');
 
 
@@ -17,7 +17,7 @@ function VideoFile(IdVideo = 0, TotalChunks = 0, Size = 0) {
     this.HexBuffer = [];
     this.NextIndexHexBuffer = 0;
     this.ByteFile = Buffer.alloc(0);
-    this.ActiveRequests = 5;
+    this.ActiveRequests = 0;
     this.StopLoading = false;
 
     this.activeProcesses = [];
@@ -58,10 +58,11 @@ VideoFile.prototype.loadVideoAsync = async function (_indexstart = 0) {
     }
     this.ActiveRequests = 0;
 
-    let MaxRequests = 10;
+    let MaxRequests = 5;
 
     let ChunkIndex = _indexstart + 1;
     while (this.NextIndexHexBuffer != this.TotalChunks && !this.StopLoading) {
+        MaxRequests = this.TotalChunks - this.NextIndexHexBuffer > MaxRequests ? MaxRequests : this.TotalChunks - this.NextIndexHexBuffer;
         if (this.ActiveRequests < MaxRequests) {
             this.getChunkProcess(ChunkIndex);
             ChunkIndex++;
@@ -69,7 +70,7 @@ VideoFile.prototype.loadVideoAsync = async function (_indexstart = 0) {
                 ChunkIndex = _indexstart + 1;
             }
         }
-        if(this.StopLoading){
+        if (this.StopLoading) {
             this.cancelAllGetChunks();
         }
         await this.sleep(1000);
@@ -95,7 +96,9 @@ VideoFile.prototype.addChunkToBytes = function (chunkHex) {
 VideoFile.prototype.getChunkProcess = function (ChunkIndex) {
     if (this.NextIndexHexBuffer + 1 > ChunkIndex || this.HexBuffer[ChunkIndex - 1] !== undefined)
         return;
-    const childProcess = fork(path.join(__dirname, 'getChunkProcess.js'));
+    const childProcess = spawn(process.execPath, [path.join(__dirname, 'getChunkProcess.js')], {
+        stdio: ['inherit', 'pipe', 'inherit', 'ipc']
+    });
     childProcess.send({
         Id: this.Id,
         ChunkIndex,
@@ -117,6 +120,7 @@ VideoFile.prototype.getChunkProcess = function (ChunkIndex) {
             this.activeProcesses.splice(index, 1);
         }
 
+        childProcess.kill();
         childProcess.disconnect();
     });
 
@@ -130,6 +134,7 @@ VideoFile.prototype.getChunkProcess = function (ChunkIndex) {
             this.activeProcesses.splice(index, 1);
         }
 
+        childProcess.kill();
         childProcess.disconnect();
     });
 
@@ -152,7 +157,7 @@ VideoFile.prototype.cancelGetChunk = function () {
         this.childProcess = null; // Limpiar la referencia al proceso hijo
     }
 };
-VideoFile.prototype.prepareVideo2Play = async function (IdVideo, TotalChunks,Size) {
+VideoFile.prototype.prepareVideo2Play = async function (IdVideo, TotalChunks, Size) {
     this.Id = IdVideo;
     this.TotalChunks = TotalChunks;
     this.Size = Size;
@@ -166,7 +171,7 @@ VideoFile.prototype.prepareVideo2Play = async function (IdVideo, TotalChunks,Siz
     this.loadVideoAsync();
     return true;
 }
-VideoFile.prototype.stopPrepareVideo2Play = function () {
+VideoFile.prototype.stopPrepareVideo2Play = async function () {
     this.StopLoading = true;
     this.ByteFile = Buffer.alloc(0);
     return true;
@@ -186,7 +191,7 @@ VideoFile.prototype.getChunk = async function (IdVideo, Part, TotalChunks, AppPa
         this.Util.ensureFolderExists(folderPath);
         const filePath = path.join(folderPath, RootHistory.root_history[Part].root_hash + '_Part' + Part + '_p.json');
         await this.Util.createTempJsonFile(Parameters, filePath, AppPath);
-        let Response = await this.DL.getValue(filePath,AppPath);
+        let Response = await this.DL.getValue(filePath, AppPath);
         if (Response.value !== undefined) {
             Response.value = this.Util.hexToString(Response.value);
             const indexPipe = Response.value.indexOf("|");

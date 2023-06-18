@@ -1,3 +1,10 @@
+//to spawn a child process
+const childProcessFile = process.argv[1] ?? '';
+
+if (childProcessFile.includes('getChunkProcess')) {
+    require(childProcessFile);
+    return;
+}
 const {
     app,
     BrowserWindow,
@@ -16,16 +23,18 @@ const chiaDataLayer = new ChiaDataLayer();
 let VFile = new VideoFile();
 let video = new Video();
 let utils = new Utils();
+PUBLIC_IP = null;
+const gotSingleInstanceLock = app.requestSingleInstanceLock();
 
 function createWindow() {
     const mainWindow = new BrowserWindow({
         width: 800,
         height: 600,
         backgroundColor: '#141414',
-        icon: path.join(app.getAppPath(),"img", 'icon.png'), 
+        icon: path.join(app.getAppPath(), "img", 'icon.png'),
         webPreferences: {
-            nodeIntegration: false, 
-            contextIsolation: true, 
+            nodeIntegration: false,
+            contextIsolation: true,
             preload: path.join(__dirname, 'BackendApi.js')
         }
     });
@@ -33,45 +42,112 @@ function createWindow() {
     mainWindow.loadFile('index.html');
     mainWindow.maximize();
     mainWindow.webContents.openDevTools();
+
 }
 
-app.whenReady().then(() => {
-    ipcMain.handle('checkPrerequisites', ()=>{return chiaDataLayer.checkPrerequisites()});
-    ipcMain.handle('openFile', (event,Title,Extension)=>{return utils.openFile(Title,Extension);});
-    ipcMain.handle('createVideoStore', (event,VideoData)=>{return video.createVideoStore(VideoData);});
-    ipcMain.handle('getPendingVideos', (event)=>{return video.getPending();});
-    ipcMain.handle('getVideos', (event)=>{return video.get();});
-    ipcMain.handle('deletePendingVideo', (event,IdVideo)=>{return video.deletePending(IdVideo);});
-    ipcMain.handle('insertChunk', (event, Video)=> {return video.insertChunk(Video);});
-    ipcMain.handle('addMirror', (event, Video)=> {return video.addMirror(Video);});
-    ipcMain.handle('confirmMirror', (event, IdVideo)=> {return video.confirmMirror(IdVideo);});
-    ipcMain.handle('isStoreConfirmed', (event, idStore)=> {return chiaDataLayer.isStoreConfirmed(idStore)});
-    ipcMain.handle('prepareVideo2Play', (event,IdVideo, TotalChunks,Size)=>{return VFile.prepareVideo2Play(IdVideo, TotalChunks,Size)});
-    ipcMain.handle('stopPrepareVideo2Play', (event)=>{return VFile.stopPrepareVideo2Play()});
-    ipcMain.handle('videoPercentageLoaded', (event)=> {return VFile.percentageLoaded();});
-    ipcMain.handle('unsubscribeVideo', (event,IdStore)=>{ return video.unsubscribe(IdStore) });
-    ipcMain.handle('subscribeVideo', (event,IdStore)=>{ return video.subscribe(IdStore) });
-    ipcMain.handle('confirmSubscription', (event,IdVideo)=>{ return video.confirmSubscription(IdVideo) });  
-    VFile.stopPrepareVideo2Play();
-    utils.deleteTempFiles();
-    createWindow();
+if (!gotSingleInstanceLock) {
+    app.quit();
+} else {
+    app.whenReady().then(() => {
+        ipcMain.handle('checkPrerequisites', () => {
+            return chiaDataLayer.checkPrerequisites()
+        });
+        ipcMain.handle('openFile', (event, Title, Extension) => {
+            return utils.openFile(Title, Extension);
+        });
+        ipcMain.handle('createVideoStore', (event, VideoData) => {
+            return video.createVideoStore(VideoData);
+        });
+        ipcMain.handle('getPendingVideos', (event) => {
+            return video.getPending();
+        });
+        ipcMain.handle('getVideos', (event) => {
+            return video.get();
+        });
+        ipcMain.handle('deletePending', (event, IdVideo) => {
+            return video.deletePending(IdVideo);
+        });
+        ipcMain.handle('insertChunk', (event, Video) => {
+            return video.insertChunk(Video);
+        });
+        ipcMain.handle('addMirror', (event, Video, PublicIP) => {
+            return video.addMirror(Video, PublicIP);
+        });
+        ipcMain.handle('confirmMirror', (event, IdVideo, Mirror) => {
+            return video.confirmMirror(IdVideo, Mirror);
+        });
+        ipcMain.handle('isStoreConfirmed', (event, idStore) => {
+            return chiaDataLayer.isStoreConfirmed(idStore)
+        });
+        ipcMain.handle('prepareVideo2Play', (event, IdVideo, TotalChunks, Size) => {
+            return VFile.prepareVideo2Play(IdVideo, TotalChunks, Size)
+        });
+        ipcMain.handle('stopPrepareVideo2Play', (event) => {
+            return VFile.stopPrepareVideo2Play()
+        });
+        ipcMain.handle('videoPercentageLoaded', (event) => {
+            return VFile.percentageLoaded();
+        });
+        ipcMain.handle('unsubscribeVideo', (event, IdStore) => {
+            return video.unsubscribe(IdStore)
+        });
+        ipcMain.handle('subscribeVideo', (event, IdStore) => {
+            return video.subscribe(IdStore)
+        });
+        ipcMain.handle('confirmSubscription', (event, IdVideo) => {
+            return video.confirmSubscription(IdVideo)
+        });
+        ipcMain.handle('setPublicIP', (event, PublicIP) => {
+            PUBLIC_IP = PublicIP;
+        });
+        ipcMain.handle('getMirrors', (event, IdVideo) => {
+            return video.getMirrors(IdVideo)
+        });
+        ipcMain.handle('deleteMirror', (event, CoinId, IdStore) => {
+            return video.deleteMirror(CoinId, IdStore)
+        });
+        ipcMain.handle('confirmDeleteMirror', (event, CoinId, IdStore) => {
+            return video.confirmDeleteMirror(CoinId, IdStore)
+        });
+        ipcMain.handle('addCustomMirror', (event, CustomMirror) => {
+            return video.addCustomMirror(CustomMirror)
+        });
+        VFile.stopPrepareVideo2Play();
+        utils.deleteTempFiles();
+        createWindow();
+        utils.getPublicIP().then((PublicIP) => {
+            PUBLIC_IP = PublicIP;
+        });
+        app.on('activate', () => {
+            if (BrowserWindow.getAllWindows().length === 0) {
+                createWindow();
+            }
+        });
+    });
 
-    app.on('activate', () => {
-        if (BrowserWindow.getAllWindows().length === 0) {
-            createWindow();
+    app.on('second-instance', () => {
+        const mainWindow = BrowserWindow.getAllWindows()[0];
+        if (mainWindow) {
+            if (mainWindow.isMinimized()) {
+                mainWindow.restore();
+            }
+            mainWindow.focus();
         }
     });
-});
+
+}
 app.on('window-all-closed', () => {
     if (process.platform !== 'darwin') {
         app.quit();
     }
 });
 
-
+if (!gotSingleInstanceLock) {
+    return;
+}
 appExpress.get('/CurrentPlayer', (req, res) => {
-    try{
-        const videoSize = VFile.isLoaded() ? VFile.ByteFile.length : VFile.Size ;
+    try {
+        const videoSize = VFile.isLoaded() ? VFile.ByteFile.length : VFile.Size;
         const range = req.headers.range || 'bytes=0-';
         const parts = rangeParser(videoSize, range, {
             combine: true
@@ -90,8 +166,7 @@ appExpress.get('/CurrentPlayer', (req, res) => {
 
         const videoPart = VFile.ByteFile.slice(start, end + 1);
         res.end(videoPart);
-    }
-    catch(err){
+    } catch (err) {
         console.log(err);
     }
 });

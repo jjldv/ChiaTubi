@@ -1,5 +1,7 @@
 const VideoFile = require('./VideoFile');
+const Utils = require('./Utils');
 const VFile = new VideoFile();
+const utils = new Utils();
 
 process.on('message', async (data) => {
     const {
@@ -13,7 +15,7 @@ process.on('message', async (data) => {
         const chunkHex = await VFile.getChunk(Id, ChunkIndex, TotalChunks, AppPath);
         process.send(chunkHex);
     } catch (error) {
-        console.error("Error fetching chunk:", error);
+        console.log(error);
         process.send(null);
     }
 });

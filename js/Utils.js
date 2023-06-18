@@ -1,6 +1,27 @@
 function Utils() {
-    
+
 }
+Utils.prototype.uId = function () {
+    let uuid = '';
+    const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+    const length = 6;
+
+    for (let i = 0; i < length; i++) {
+        const randomIndex = Math.floor(Math.random() * characters.length);
+        uuid += characters.charAt(randomIndex);
+    }
+
+    return uuid;
+}
+
+Utils.prototype.getIPFromURL = function (url) {
+    const matches = url.match(/^https?:\/\/([^:/?#]+)(?:[/:?#]|$)/i);
+    if (matches && matches.length > 1) {
+        return matches[1];
+    }
+    return '';
+}
+
 Utils.prototype.showLoading = function (message = "Loading...") {
     const existingLoading = document.getElementById('loading-backdropcss');
     if (existingLoading) {
@@ -40,15 +61,15 @@ Utils.prototype.hideLoading = function () {
     }
 
 }
-Utils.prototype.showAlert = function (title,message, type = 'error') {
+Utils.prototype.showAlert = function (title, message, type = 'error') {
     Swal.fire({
-      title: title,
-      text: message,
-      icon: type,
-      confirmButtonText: 'Ok',
-      
+        title: title,
+        text: message,
+        icon: type,
+        confirmButtonText: 'Ok',
+
     });
-  }
+}
 Utils.prototype.sleep = function (ms) {
     return new Promise(resolve => setTimeout(resolve, ms));
 }
@@ -90,23 +111,23 @@ Utils.prototype.GoVideos = async function () {
         AppView.init();
     }
 }
-Utils.prototype.CopyText = function (text,IdElementIconCopy) {
+Utils.prototype.CopyText = function (text, IdElementIconCopy) {
     navigator.clipboard.writeText(text)
-    .then(() => {
-        const iconoCopiado = document.getElementById(IdElementIconCopy);
-        iconoCopiado.classList.remove('bi-clipboard');
-        iconoCopiado.classList.add('bi-check2');
-    })
-    .catch((error) => {
-      console.error('Error al copiar el texto: ', error);
-    });
+        .then(() => {
+            const iconoCopiado = document.getElementById(IdElementIconCopy);
+            iconoCopiado.classList.remove('bi-clipboard');
+            iconoCopiado.classList.add('bi-check2');
+        })
+        .catch((error) => {
+            console.error('Error al copiar el texto: ', error);
+        });
 }
-Utils.prototype.GoPlayer = async function (IdVideo,TotalChunks,VideoName,Size,IdChanel) {
+Utils.prototype.GoPlayer = async function (IdVideo, TotalChunks, VideoName, Size, IdChanel) {
     util.showLoading();
     let IsLoaded = await util.loadHTMLFile('view/Player.html')
     util.hideLoading();
     if (IsLoaded) {
-        AppView = new PlayerView(IdVideo,TotalChunks,VideoName,Size,IdChanel);
+        AppView = new PlayerView(IdVideo, TotalChunks, VideoName, Size, IdChanel);
         AppView.init();
     }
 }
@@ -120,3 +141,25 @@ Utils.prototype.GoChanel = async function (ChanelId, ChanelName) {
         AppView.init();
     }
 }
+Utils.prototype.getPublicIP = async function () {
+    try {
+        const response = await fetch('https://api.ipify.org?format=json');
+        const data = await response.json();
+        const publicIP = data.ip;
+        return publicIP;
+    } catch (error) {
+        return null;
+    }
+}
+Utils.prototype.isUrlAccessible = async function (url) {
+    try {
+        const response = await fetch(url);
+        if (response.ok || response.status === 500) {
+            return true;
+        } else {
+            return false;
+        }
+    } catch (error) {
+        return false;
+    }
+};

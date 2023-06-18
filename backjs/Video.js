@@ -56,10 +56,46 @@ Video.prototype.createVideoStore = async function (VideoData) {
         };
     }
 }
+Video.prototype.setPendingCustomMirror = async function (MrrorData) {
+    this.dbConnect();
+    const videoPendingInsert = `INSERT INTO Pending (Id, Type, Data) VALUES (?, ?, ?)`;
+    const videoPendingValues = [MrrorData.Id, "AddCustomMirror", JSON.stringify(MrrorData)];
+    return new Promise((resolve, reject) => {
+        this.DB.run(videoPendingInsert, videoPendingValues, (err) => {
+            if (err) {
+                resolve(false);
+            } else {
+                resolve(true);
+            }
+            this.dbDisconnect();
+        });
+    });
+}
 Video.prototype.setPendingSubscription = async function (Video) {
     this.dbConnect();
     const videoPendingInsert = `INSERT INTO Pending (Id, Type, Data) VALUES (?, ?, ?)`;
     const videoPendingValues = [Video.Id, "VideoSubscription", JSON.stringify(Video)];
+    return new Promise((resolve, reject) => {
+        this.DB.run(videoPendingInsert, videoPendingValues, (err) => {
+            if (err) {
+                resolve(false);
+            } else {
+                resolve(true);
+            }
+            this.dbDisconnect();
+        });
+    });
+}
+Video.prototype.setPendingDeleteMirror = async function (CoinId, IdStore) {
+    this.dbConnect();
+    let PendingData = {
+        Id: CoinId,
+        IdStore: IdStore,
+        Name: "Removing Mirror",
+        Type: "DeleteMirror",
+    }
+    const videoPendingInsert = `INSERT INTO Pending (Id, Type, Data) VALUES (?, ?, ?)`;
+    const videoPendingValues = [CoinId, "DeleteMirror", JSON.stringify(PendingData)];
     return new Promise((resolve, reject) => {
         this.DB.run(videoPendingInsert, videoPendingValues, (err) => {
             if (err) {
@@ -205,19 +241,26 @@ Video.prototype.unsubscribe = async function (IdStore) {
         };
     }
     this.deleteOurMirrors(IdStore);
-    
+
     this.deleteFromDbById(IdStore);
     return {
         status: "success",
         message: "Unsubscribed"
     };
 }
+Video.prototype.deleteMirror = async function (CoinId, IdStore) {
+    let Response = await this.DL.deleteMirror(CoinId);
+    if (Response.success === undefined || Response.success === true) {
+        this.setPendingDeleteMirror(CoinId, IdStore);
+    }
+    return Response;
+}
 Video.prototype.deleteOurMirrors = async function (IdStore) {
     let ResponseMirror = await this.DL.getMirrors(IdStore);
-    if(ResponseMirror.mirrors !== undefined && ResponseMirror.mirrors.length > 0){
-        for(let i = 0; i < ResponseMirror.mirrors.length; i++){
-            if(ResponseMirror.mirrors[i].ours === true){
-                this.DL.deleteMirror( ResponseMirror.mirrors[i].coin_id);
+    if (ResponseMirror.mirrors !== undefined && ResponseMirror.mirrors.length > 0) {
+        for (let i = 0; i < ResponseMirror.mirrors.length; i++) {
+            if (ResponseMirror.mirrors[i].ours === true) {
+                this.DL.deleteMirror(ResponseMirror.mirrors[i].coin_id);
             }
         }
     }
@@ -225,18 +268,18 @@ Video.prototype.deleteOurMirrors = async function (IdStore) {
 Video.prototype.getOurMirrorsCoinsId = function () {
     const mirrors = this.mirrors; // Supongamos que `mirrors` es una propiedad existente en el objeto `Video`
     if (!mirrors) {
-      return [];
+        return [];
     }
-  
+
     const coinsId = [];
     for (let i = 0; i < mirrors.length; i++) {
-      if (mirrors[i].ours === true) {
-        coinsId.push(mirrors[i].coin_id);
-      }
+        if (mirrors[i].ours === true) {
+            coinsId.push(mirrors[i].coin_id);
+        }
     }
-  
+
     return coinsId;
-  }
+}
 Video.prototype.subscribe = async function (Video) {
     let isAlreadySubscribed = await this.isAlreadySubscribed(Video.Id);
     if (isAlreadySubscribed) {
@@ -316,12 +359,49 @@ Video.prototype.getFromChain = async function () {
     }
     return Videos;
 }
+Video.prototype.confirmDeleteMirror = async function (CoinId, IdStore) {
+    let RMirrors = await this.DL.getMirrors(IdStore);
+    if (RMirrors.success === "false" || RMirrors.mirrors === undefined) {
+        return {
+            status: "error",
+            message: "Error getting mirrors"
+        }
+    }
+    if (RMirrors.mirrors.length == 0) {
+        return {
+            status: "success",
+            message: "Mirror deleted"
+        }
+    }
+    let IsCoinIdPresent = await this.isCoinIdPresent(CoinId, RMirrors.mirrors);
+    if (IsCoinIdPresent === false) {
+        return {
+            status: "success",
+            message: "Mirror deleted"
+        }
+    }
+    return {
+        status: "error",
+        message: "Mirror not deleted"
+    }
+
+}
+Video.prototype.isCoinIdPresent = function (CoinId, Mirrors) {
+    for (let i = 0; i < Mirrors.length; i++) {
+        if (Mirrors[i].coin_id === CoinId) {
+            return true;
+        }
+    }
+    return false;
+}
 Video.prototype.confirmSubscription = async function (IdStore) {
     let IsVideoStore = await this.isVideoStore(IdStore);
+    let Mirrors = await this.DL.getMirrors(IdStore);
+    let CantMirrors = Mirrors.mirrors.length !== undefined ? Mirrors.mirrors.length : 0;
     if (IsVideoStore === false)
         return {
             status: "error",
-            message: "Not a video store"
+            message: `Not a video store (${CantMirrors} mirrors)})`
         };
     let Video = await this.getInfo(IdStore);
     if (Video === null)
@@ -374,6 +454,34 @@ Video.prototype.get = async function (FromChain = false) {
         this.dbConnect();
     });
 };
+Video.prototype.getMirrors = async function (IdStore) {
+    let Mirrors = await this.DL.getMirrors(IdStore);
+    return Mirrors;
+}
+Video.prototype.addCustomMirror = async function (MirrorData) {
+    const response = await this.DL.getMirrors(Video.Id);
+    const isMirror = this.checkIfMirror(response.mirrors, MirrorData.Mirror);
+    if (isMirror) {
+        return {
+            status: "success",
+            message: "Mirror already added",
+        }
+    }
+    let Response = await this.DL.addMirror(MirrorData.IdStore, MirrorData.Mirror, MirrorData.Fee);
+    if (Response.success === undefined || Response.success === false) {
+        return {
+            status: "error",
+            message: "Error adding mirror",
+            DLResponse: Response,
+        };
+    }
+    this.setPendingCustomMirror(MirrorData);
+    return {
+        status: "success",
+        message: "Mirror added",
+    };
+
+}
 Video.prototype.addMirror = async function (Video) {
     const response = await this.DL.getMirrors(Video.Id);
     const publicIP = await this.Util.getPublicIP();
@@ -397,6 +505,7 @@ Video.prototype.addMirror = async function (Video) {
         return {
             status: "error",
             message: "Error adding mirror",
+            DLResponse: Response,
             PublicIP: publicIP
         };
     }
@@ -406,18 +515,19 @@ Video.prototype.addMirror = async function (Video) {
         PublicIP: publicIP
     };
 }
-Video.prototype.confirmMirror = async function (IdVideo) {
+Video.prototype.confirmMirror = async function (IdVideo,Mirror = null) {
     try {
         const response = await this.DL.getMirrors(IdVideo);
-        const publicIP = await this.Util.getPublicIP();
-        if (!publicIP) {
+        const publicIP = Mirror == null ? await this.Util.getPublicIP():this.Util.getIPFromURL(Mirror);
+        if (!publicIP && Mirror == null) {
             return {
                 status: "error",
                 message: "Error getting public IP",
                 PublicIP: publicIP
             };
         }
-        const isMirror = this.checkIfMirror(response.mirrors, publicIP);
+        Mirror = Mirror == null ? `http://${publicIP}:8575`:Mirror;
+        const isMirror = this.checkIfMirror(response.mirrors, Mirror);
         if (!isMirror) {
             return {
                 status: "error",
@@ -444,7 +554,7 @@ Video.prototype.getCoinIdMirror = async function (Mirrors) {
             return null;
         }
 
-        const mirrors = Mirrors; 
+        const mirrors = Mirrors;
         if (!mirrors) {
             return null;
         }
@@ -462,13 +572,13 @@ Video.prototype.getCoinIdMirror = async function (Mirrors) {
         return null;
     }
 }
-Video.prototype.checkIfMirror = function (mirrors, publicIP) {
+Video.prototype.checkIfMirror = function (mirrors, Mirror) {
     if (!mirrors) {
         return false;
     }
     for (let i = 0; i < mirrors.length; i++) {
         const urls = mirrors[i].urls;
-        if (urls && urls.includes(`http://${publicIP}:8575`)) {
+        if (urls && urls.includes(`${Mirror}`)) {
             return true;
         }
     }

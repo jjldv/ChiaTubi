@@ -5,9 +5,7 @@ const {
     dialog
 } = require('electron');
 const Base64 = require('js-base64').Base64;
-
 function Utils() {
-
 }
 Utils.prototype.deleteTempFiles = function (AppPath = app.getAppPath()) {
     const folderPath = path.join(AppPath, 'temp');
@@ -53,6 +51,13 @@ Utils.prototype.uId = function () {
     }
 
     return uuid;
+}
+Utils.prototype.getIPFromURL = function (url) {
+    const matches = url.match(/^https?:\/\/([^:/?#]+)(?:[/:?#]|$)/i);
+    if (matches && matches.length > 1) {
+        return matches[1];
+    }
+    return '';
 }
 Utils.prototype.createTempJsonFile = async function (Content, FilePath = null, AppPath = app.getAppPath()) {
     const folderPath = path.join(AppPath, 'temp');
@@ -115,6 +120,9 @@ Utils.prototype.sleep = function (ms) {
 }
 Utils.prototype.getPublicIP = async function () {
     try {
+        if (PUBLIC_IP != null) {
+            return PUBLIC_IP;
+        }
         const response = await fetch('https://api.ipify.org?format=json');
         const data = await response.json();
         const publicIP = data.ip;

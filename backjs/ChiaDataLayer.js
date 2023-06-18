@@ -297,14 +297,14 @@ ChiaDatalayer.prototype.isChiaInstalled = function () {
     try {
         // Verificar si el comando "chia" está activo
         execSync('chia --version');
-        console.log('El comando "chia" está activo.');
+        console.log('Command "chia" is active');
 
         return {
             status: 'success',
-            message: 'El comando "chia" está activo.'
+            message: 'Command "chia" is active.'
         }
     } catch (error) {
-        console.error(`El comando "chia" no está activo: ${error.message}`);
+        console.error(`Command "chia" not active: ${error.message}`);
 
         // Verificar si la ruta existe
         const chiaPath = path.join(process.env.LOCALAPPDATA, 'Programs', 'Chia', 'resources', 'app.asar.unpacked', 'daemon');

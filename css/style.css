@@ -290,13 +290,15 @@ footer {
 /*loading*/
 /* Estilos para el fondo del modal */
 /* Estilos para el fondo del modal */
-.swal2-modal{
+.swal2-modal {
     background: gray;
     color: white;
 }
-.swal2-confirm{
+
+.swal2-confirm {
     background: #495057;
 }
+
 .loading-backdropcss {
     position: fixed;
     top: 0;
@@ -349,12 +351,14 @@ footer {
     margin-top: 10px;
     margin-bottom: 10px;
 }
+
 .card-title-pending {
     color: #000;
     text-decoration: none;
     margin-top: 10px;
     margin-bottom: 10px;
 }
+
 .card-text-pending {
     color: #000;
 }
@@ -372,7 +376,8 @@ footer {
     --bs-btn-border-color: gray;
 }
 
-#preview,#previewVideoImage {
+#preview,
+#previewVideoImage {
     cursor: pointer;
     max-height: 300px;
 }
@@ -390,7 +395,7 @@ footer {
     align-items: center;
     justify-content: center;
     height: 100vh;
-    
+
 }
 
 .containerLanding img {
@@ -398,3 +403,10 @@ footer {
     max-height: 100%;
 }
 
+.online-icon {
+    color: green;
+}
+
+.offline-icon {
+    color: gray;
+}

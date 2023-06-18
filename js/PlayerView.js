@@ -31,10 +31,10 @@ PlayerView.prototype.setProgressBar = async function () {
     progressBar.setAttribute('aria-valuenow', 3);
     progressBar.innerHTML = '3%';
 
-    while (this.PercentageLoaded < 100 && AppView.Id !==undefined && AppView.Id == this.Id) {
-        progressBar.style.width = (this.PercentageLoaded < 3 ?3:this.PercentageLoaded) + '%';
-        progressBar.setAttribute('aria-valuenow', (this.PercentageLoaded < 3 ?3:this.PercentageLoaded));
-        progressBar.innerHTML = Math.floor( (this.PercentageLoaded < 3 ?3:this.PercentageLoaded)) + '%';
+    while (this.PercentageLoaded < 100 && AppView.Id !== undefined && AppView.Id == this.Id) {
+        progressBar.style.width = (this.PercentageLoaded < 3 ? 3 : this.PercentageLoaded) + '%';
+        progressBar.setAttribute('aria-valuenow', (this.PercentageLoaded < 3 ? 3 : this.PercentageLoaded));
+        progressBar.innerHTML = Math.floor((this.PercentageLoaded < 3 ? 3 : this.PercentageLoaded)) + '%';
         await util.sleep(1000);
         this.PercentageLoaded = await BackendApi.videoPercentageLoaded();
         this.videoElement.setAttribute('max', this.PercentageLoaded);
@@ -46,17 +46,37 @@ PlayerView.prototype.setProgressBar = async function () {
         }
     }
 }
+
+PlayerView.prototype.isMirrorOnline = function (Mirror) {
+
+}
+
+PlayerView.prototype.addMirror = async function (Video) {
+    util.showLoading("Adding Mirror...");
+    let RAddMirror = await BackendApi.addMirror(Video);
+    util.hideLoading();
+    if (RAddMirror.status !== undefined && RAddMirror.status === "error") {
+        util.showAlert("Error", RAddMirror.message);
+        return;
+    }
+    this.loadMirrors();
+}
+PlayerView.prototype.openModalCustomMirror = function () {
+    video.openModalAddCustomMirror(this.Id)
+}
 PlayerView.prototype.init = async function () {
+
+    video.loadMirrors(this.Id);
+    
     LblVideoName.innerHTML = `${this.Name}`;
     LblIdStore.innerHTML = `Id Store: ${this.Id}    <button onclick="util.CopyText('${this.Id}','IconCopyStorePlayer')" data-text="${this.Id}" class="btn btn-primary btn-sm"><i id="IconCopyStorePlayer" title="Copy Store Id" class="bi bi-clipboard bi-sm"></i></button>`;
     
     await BackendApi.prepareVideo2Play(this.Id, this.TotalChunks, this.Size);
     this.setProgressBar();
-    while (this.PercentageLoaded < 10 && AppView.Id !==undefined && AppView.Id == this.Id) {
+    while (this.PercentageLoaded < 10 && AppView.Id !== undefined && AppView.Id == this.Id) {
         await util.sleep(1000);
     }
-    if(AppView.Id !== this.Id)
-    {
+    if (AppView.Id !== this.Id) {
         return;
     }
     const observer = new MutationObserver((mutationsList) => {
@@ -68,7 +88,9 @@ PlayerView.prototype.init = async function () {
             }
         }
     });
-    observer.observe(this.videoElement.parentNode, { childList: true });
+    observer.observe(this.videoElement.parentNode, {
+        childList: true
+    });
     this.videoElement.src = `http://localhost:8000/CurrentPlayer?timestamp=${Date.now()}`
-    
+
 };

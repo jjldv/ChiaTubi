@@ -1,16 +1,27 @@
 function Video() {
+    //Add Video
     this.ModalAdd = null;
-    this.ModalSubscribe = null;
-    this.removeModalAdd = this.removeModalAdd.bind(this);
     this.addVideo = this.addVideo.bind(this);
-    this.subscribe = this.subscribe.bind(this);
+    this.removeModalAdd = this.removeModalAdd.bind(this);
     this.selectVideoImage = this.selectVideoImage.bind(this);
     this.selectVideoFile = this.selectVideoFile.bind(this);
-    this.removeModalSubscribe = this.removeModalSubscribe.bind(this);
     this.ImagePath = null;
     this.VideoPath = null;
     this.ModalAddBootstrap = null;
+    
+    //Subscribe Video
+    this.ModalSubscribe = null;
+    this.subscribe = this.subscribe.bind(this);
+    this.removeModalSubscribe = this.removeModalSubscribe.bind(this);
     this.ModalSubscribeBootstrap = null;
+
+    //Add Custom Mirror
+    this.ModalAddCustomMirror = null;
+    this.addCustomMirror = this.addCustomMirror.bind(this);
+    this.removeModalAddCustomMirror = this.removeModalAddCustomMirror.bind(this);
+    this.ModalAddCustomMirrorBootstrap = null;
+
+    
     fetch('./view/include/AddVideoModal.html')
         .then(response => response.text())
         .then(html => {
@@ -23,6 +34,13 @@ function Video() {
             this.ModalSubscribe = this.createDOMElementFromHTML(html);
             this.ModalSubscribe.addEventListener('hidden.bs.modal', this.removeModalSubscribe.bind(this));
         });
+    fetch('./view/include/AddCustomMirrorModal.html')
+        .then(response => response.text())
+        .then(html => {
+            this.ModalAddCustomMirror = this.createDOMElementFromHTML(html);
+            this.ModalAddCustomMirror.addEventListener('hidden.bs.modal', this.removeModalAddCustomMirror.bind(this));
+        });
+
     this.Pending = [];
     this.IsProcessingQueue = false;
     this.StopProcessingQueue = false;
@@ -135,6 +153,19 @@ Video.prototype.openModalSubscribe = function () {
     this.ModalSubscribeBootstrap.show();
     
 };
+Video.prototype.openModalAddCustomMirror = function (IdStore) {
+    document.body.appendChild(this.ModalAddCustomMirror);
+    this.ModalAddCustomMirrorBootstrap = new bootstrap.Modal(this.ModalAddCustomMirror);
+    let BtnAddCustomMirror = this.ModalAddCustomMirror.querySelector('#BtnAddCustomMirror');
+    
+    BtnAddCustomMirror.addEventListener('click', this.addCustomMirror);
+
+    CustomMirror.value = `http://${PublicIP}:8575`;
+
+    this.ModalAddCustomMirrorBootstrap.show();
+    IdStoreCustomMirror.value = IdStore;
+    
+}
 Video.prototype.hideModalAdd = async function () {
     this.ModalAddBootstrap.hide();
 }
@@ -167,7 +198,19 @@ Video.prototype.removeModalSubscribe = function () {
     document.getElementById(this.ModalSubscribe.id).remove();
     this.ModalAdd.removeEventListener('hidden.bs.modal', this.removeModalSubscribe);
 }
-
+Video.prototype.removeModalAddCustomMirror = function () {
+    let BtnAddCustomMirror = this.ModalAddCustomMirror.querySelector('#BtnAddCustomMirror');
+    BtnAddCustomMirror.removeEventListener('click', this.addCustomMirror);
+    CustomMirrorFee.value = "0";
+    CustomMirror.value = "";
+    IdStoreCustomMirror.value = "";
+    this.ModalAddCustomMirrorBootstrap.hide();
+    this.ModalAddCustomMirrorBootstrap.dispose();
+    document.getElementById(this.ModalAddCustomMirror.id).remove();
+    this.ModalAdd.removeEventListener('hidden.bs.modal', this.removeModalAddCustomMirror);
+    
+    
+}
 Video.prototype.createDOMElementFromHTML = function (htmlString) {
     var range = document.createRange();
     var fragment = range.createContextualFragment(htmlString);
@@ -194,8 +237,8 @@ Video.prototype.cardVideo = function (Video, IsVideoConfirmed = false) {
     let BtnRemove = IsVideoConfirmed ? `<button class="btn btn-danger" style="width:100%;" onclick="video.unsubscribe('${Video.Id}')">Unsubscribe</button>` : `<button class="btn btn-danger" style="width:100%;" onclick="video.cancelPending('${Video.Id}')">Cancel</button>`;
     let OnclickLoad = IsVideoConfirmed ? `onclick="util.GoPlayer('${Video.Id}',${Video.TotalChunks},'${Video.Name}',${Video.Size},'${Video.IdChanel}')"` : "";
     let CardElement = `
-        <a href="#" id="Cont${Video.Id}"   title="${Video.Name} - Store Id:${Video.Id}" style="text-decoration:none;text-align:center;">
-            <img src="${Video.Image}" ${OnclickLoad} alt="${Video.Name}">
+        <a href="#" id="Cont${Video.Id}" class="Cont${Video.Id}"   title="${Video.Name} - Store Id:${Video.Id}" style="text-decoration:none;text-align:center;">
+            <img src="${Video.Image??'img/imgplaceholder.png'}" ${OnclickLoad} alt="${Video.Name}">
             <div class="card-body">
               <h5 class="card-title-${!IsVideoConfirmed?"pending":""}" style="color:${FontColor}">${Video.Name}</h5>
               <p class="card-text-${!IsVideoConfirmed?"pending":""}"  id="Status_${Video.Id}" style="display:${IsVideoConfirmed ? "none" : "block"};color:${FontColor}">----</p>
@@ -206,6 +249,7 @@ Video.prototype.cardVideo = function (Video, IsVideoConfirmed = false) {
 
     return CardElement;
 }
+
 Video.prototype.loadPending = async function () {
     let Response = await BackendApi.getPendingVideos();
     console.log(Response);
@@ -233,20 +277,26 @@ Video.prototype.mergeWithPending = async function (Videos) {
     });
     this.Pending = Array.from(uniqueMap.values());
 };
-Video.prototype.deletePending = async function (IdVideo) {
-    let Response = await BackendApi.deletePendingVideo(IdVideo);
+Video.prototype.deletePending = async function (Id) {
+    let Response = await BackendApi.deletePending(Id);
     if (Response.status === "error") {
         util.showAlert("", Response.message);
         return;
     }
-    let Card = document.getElementById(`Cont${IdVideo}`);
-    Card.remove();
-    this.Pending = this.Pending.filter(video => video.Id !== IdVideo);
+    let Card = document.getElementById(`Cont${Id}`);
+    if (Card !== null)
+        Card.remove();
+    
+    let elements = document.querySelectorAll(`.Cont${Id}`);
+    elements.forEach(element => {
+        element.remove();
+    })
+    this.Pending = this.Pending.filter(video => video.Id !== Id);
     this.setPendingNumber();
 
 }
 Video.prototype.cancelPending = async function (IdVideo) {
-    let Response = await BackendApi.deletePendingVideo(IdVideo);
+    let Response = await BackendApi.deletePending(IdVideo);
     if (Response.status === "error") {
         util.showAlert("", Response.message);
         return;
@@ -274,13 +324,108 @@ Video.prototype.processQueue = async function () {
     console.log("procesing...");
     this.setIsProcessingQueue(true);
     while (this.Pending.length > 0 && this.StopProcessingQueue === false) {
-        if(this.Pending[0].Type == "VideoInsert")
-            await this.processVideo(this.Pending[0]);
-        else 
-            await this.processSubscription(this.Pending[0]);
+        switch (this.Pending[0].Type) {
+            case "VideoInsert":
+                await this.processVideo(this.Pending[0]);
+                break;
+            case "VideoSubscription":
+                await this.processSubscription(this.Pending[0]);
+                break;
+            case "DeleteMirror":
+                await this.processDeleteMirror(this.Pending[0]);
+                break;
+            case "AddCustomMirror":
+                await this.processAddCustomMirror(this.Pending[0]);
+                break;
+            default:
+                this.StopProcessingQueue = true;
+                break;
+        }
     }
     this.setIsProcessingQueue(false);
     console.log("end processQueue");
+}
+Video.prototype.processAddCustomMirror = async function (Mirror) {
+    if (this.StopProcessingQueue) {
+        return;
+    }
+    let IsMirrorConfirmed = false;
+    while (!IsMirrorConfirmed && !this.StopProcessingQueue) {
+        let RIsConfirmed = await BackendApi.confirmMirror(Mirror.IdStore,Mirror.Mirror);
+        if (RIsConfirmed.status === "error") {
+            await util.sleep(2000);
+        } else
+            IsMirrorConfirmed = true;
+    }
+    if (this.StopProcessingQueue)
+        return;
+    if(document.getElementById(`MirrorList`)){
+
+    }
+
+    await this.deletePending(Mirror.Id);
+    this.loadMirrors(Mirror.IdStore);
+}
+Video.prototype.loadMirrors = async function (IdStore) {
+    let MirrorList = document.getElementById("MirrorList");
+    if (MirrorList === null) {
+        return;
+    }
+    MirrorList.innerHTML = "Loading Mirrors...";
+    let RMirrors = await BackendApi.getMirrors(IdStore);
+    MirrorList.innerHTML = RMirrors.mirrors === undefined || RMirrors.mirrors.length == 0 ? "No Mirrors Found<br>"  : "";
+    if (RMirrors.mirrors !== undefined && RMirrors.mirrors.length > 0) {
+        this.setMirrorList(RMirrors.mirrors, IdStore);
+    }
+}
+Video.prototype.setMirrorList = async function (Mirrors , IdStore) {
+    let MirrorList = document.getElementById("MirrorList");
+    MirrorList.innerHTML = "";
+    for (let i = 0; i < Mirrors.length; i++) {
+        let Mirror = Mirrors[i];
+        let LiMirror = await this.liMirror(Mirror,IdStore) + "<br>";
+        MirrorList.insertAdjacentHTML('beforeend', LiMirror);
+    }
+}
+Video.prototype.liMirror = async function (Mirror,IdStore) {
+    let urlsHTML = '';
+    if (Mirror.urls && Mirror.urls.length > 0) {
+        urlsHTML = Mirror.urls
+            .map((url) => `<li>${url}</li>`)
+            .join('');
+    }
+    let showRemoveButton = Mirror.ours;
+    let removeButtonHTML = '';
+    if (showRemoveButton) {
+        removeButtonHTML = `<button class="btn btn-danger remove-btn" title="Remove Mirror" id="DeleteMirror${Mirror.coin_id}" onclick="video.deleteMirror('${Mirror.coin_id}','${IdStore}')"><i class="fas fa-trash"></i></button>`;
+    }
+    let IsOnline = await util.isUrlAccessible(Mirror.urls[0]+"/download");
+    let StatusIcon = IsOnline ? "online-icon" : "offline-icon";
+    let LiElement = `
+      <li data-urls="${Mirror.urls}" class="Cont${Mirror.coin_id}" id="Cont${Mirror.coin_id}">
+        <i class="${Mirror.ours ? 'fas fa-desktop' : 'fas fa-globe'}"></i> ${Mirror.ours ? 'Local' : 'Remote'} Mirror
+        <i class="fas fa-check-circle ${StatusIcon}" id="StatusIcon${Mirror.coin_id}"></i>
+        ${removeButtonHTML}
+        <ul>${urlsHTML}</ul>
+      </li>
+    `;
+    return LiElement;
+};
+Video.prototype.processDeleteMirror = async function (Coin) {
+    if (this.StopProcessingQueue) {
+        return;
+    }
+    let IsDeleteConfirmed = false;
+    while (!IsDeleteConfirmed && !this.StopProcessingQueue) {
+        let RIsConfirmed = await BackendApi.confirmDeleteMirror(Coin.Id,Coin.IdStore);
+        if (RIsConfirmed.status === "error") {
+            await util.sleep(2000);
+        } else
+            IsDeleteConfirmed = true;
+    }
+    if (this.StopProcessingQueue)
+        return;
+    await this.deletePending(Coin.Id);
 }
 Video.prototype.processSubscription = async function (Video) {
     if (this.StopProcessingQueue) {
@@ -324,6 +469,81 @@ Video.prototype.processVideo = async function (Video) {
         VideoSubscriptions.insertAdjacentHTML('beforeend', Card);
     }
 }
+Video.prototype.addCustomMirror = async function () {
+    console.log("subscribe");
+ 
+    let IdStore = document.getElementById('IdStoreCustomMirror').value;
+    let CustomMirror = document.getElementById('CustomMirror').value;
+    let CustomMirrorFee = document.getElementById('CustomMirrorFee').value;
+
+    if (IdStore === ""  || CustomMirror === "" || CustomMirrorFee === "") {
+        util.showAlert("", "Id Store and mirror is required");
+        return;
+    }
+    let Uid = util.uId();
+    let MirrorC = {
+        Id: Uid,
+        IdStore: IdStore,
+        Image: "img/imgplaceholder.png",
+        Name: "Inserting Mirror "+CustomMirror,
+        Mirror : CustomMirror,
+        Type: "AddCustomMirror",
+        Fee: CustomMirrorFee
+    };
+
+    util.showLoading("Adding mirror...");
+
+    let Response = await BackendApi.addCustomMirror(MirrorC);
+    if (Response.status === "error") {
+        util.hideLoading();
+        util.showAlert("", Response.message);
+        return;
+    }
+    let Card = this.cardVideo(MirrorC);
+    PendingContainer.insertAdjacentHTML('beforeend', Card);
+    this.setPendingNumber();
+    this.Pending.push(MirrorC);
+    this.ModalAddCustomMirrorBootstrap.hide();
+    util.hideLoading();
+    await util.sleep(3000);
+    this.processQueue();
+    
+}
+Video.prototype.deleteMirror = async function (CoinId,IdStore) {
+    let result = await Swal.fire({
+        title: 'Remove Mirror',
+        text: 'Are you sure you want to remove this Mirror?',
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonText: 'Remove',
+        cancelButtonText: 'Cancel',
+        reverseButtons: true
+    })
+    if (!result.isConfirmed) {
+        return;
+    }
+    util.showLoading("Removing Mirror...");
+    let RRemove = await BackendApi.deleteMirror(CoinId, IdStore);
+    util.hideLoading();
+    if (RRemove.status !== undefined && RRemove.status === "error") {
+        util.showAlert("Error", RRemove.message);
+        return;
+    }
+    let PendingData = {
+        Id: CoinId,
+        IdStore:IdStore,
+        Name: "Removing Mirror",
+        Type: "DeleteMirror"
+    };
+    if(document.getElementById(`DeleteMirror${CoinId}`))
+        document.getElementById(`DeleteMirror${CoinId}`).remove();
+    let Card = this.cardVideo(PendingData);
+    PendingContainer.insertAdjacentHTML('beforeend', Card);
+    this.setPendingNumber();
+    this.Pending.push(PendingData);
+    this.processQueue();
+
+}
 Video.prototype.addMirror = async function (Video) {
     if (this.StopProcessingQueue) {
         return;
@@ -348,7 +568,7 @@ Video.prototype.addMirror = async function (Video) {
         document.getElementById(`Status_${Video.Id}`).innerHTML = "Confirming Mirror"
     let IsMirrorConfirmed = false;
     while (!IsMirrorConfirmed && !this.StopProcessingQueue) {
-        let RIsMirrorAdded = await BackendApi.confirmMirror(Video.Id);
+        let RIsMirrorAdded = await BackendApi.confirmMirror(Video.Id,null);
         if (RIsMirrorAdded.status === "error") {
             await util.sleep(2000);
         } else {

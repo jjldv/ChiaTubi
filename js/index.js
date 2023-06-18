@@ -2,6 +2,7 @@ BackendApi.stopPrepareVideo2Play();
 let AppView = {};
 let util = new Utils();
 let video = new Video();
+let PublicIP = null;
 
 let BtnOpenAddVideoModal = document.getElementById("BtnOpenAddVideoModal");
 let BtnSubscribeVideoModal = document.getElementById("BtnSubscribeVideoModal");
@@ -15,6 +16,12 @@ BtnSubscribeVideoModal.addEventListener('click', () => {
     video.openModalSubscribe();
 })
 window.addEventListener('load', async () => {
+    PublicIP = await util.getPublicIP();
+    console.log("PublicIP: " + PublicIP);
+    if (PublicIP !== null) {
+       BackendApi.setPublicIP(PublicIP);
+       MyIP.innerHTML = `My IP: ${PublicIP}`;
+    }
     util.showLoading("Checking Prerequisites...");
     let IsChiaInstalled = await BackendApi.checkPrerequisites();
     util.hideLoading();
