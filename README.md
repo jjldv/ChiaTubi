@@ -1,4 +1,5 @@
-# ChiaTubi
+![image](https://github.com/jjldv/ChiaTubi/assets/6075488/f604c9c8-4052-45dc-a0b9-a4657b2e9988)
+
 
 ChiaTubi is a project designed to test the features of the Chia DataLayer. It allows users to create video stores and share them with others using the store's ID. Working on Windows.
 
@@ -12,6 +13,8 @@ ChiaTubi is a project designed to test the features of the Chia DataLayer. It al
 
 To run ChiaTubi, please ensure you have the following:
 
+- node
+- npm
 - Chia installed with the DataLayer service activated
 - File Server propagation enabled
 - Port 8575 open on your router
