@@ -13,8 +13,8 @@ ChiaTubi is a project designed to test the features of the Chia DataLayer. It al
 
 To run ChiaTubi, please ensure you have the following:
 
-- node
-- npm
+- Node.js
+- Python
 - Chia installed with the DataLayer service activated
 - File Server propagation enabled
 - Port 8575 open on your router
@@ -35,7 +35,7 @@ cd ChiaTubi
 
 3. Install dependencies:
 ```shell
-npm install
+npm install -g node-gyp
 ```
 
 ## Usage
