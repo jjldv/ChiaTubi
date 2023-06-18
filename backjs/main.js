@@ -41,7 +41,7 @@ function createWindow() {
 
     mainWindow.loadFile('index.html');
     mainWindow.maximize();
-    mainWindow.webContents.openDevTools();
+   // mainWindow.webContents.openDevTools();
 
 }
 

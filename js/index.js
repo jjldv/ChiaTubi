@@ -16,15 +16,16 @@ BtnSubscribeVideoModal.addEventListener('click', () => {
     video.openModalSubscribe();
 })
 window.addEventListener('load', async () => {
+
+    util.showLoading("Checking Prerequisites...");
+    let IsChiaInstalled = await BackendApi.checkPrerequisites();
+    util.hideLoading();
     PublicIP = await util.getPublicIP();
     console.log("PublicIP: " + PublicIP);
     if (PublicIP !== null) {
        BackendApi.setPublicIP(PublicIP);
        MyIP.innerHTML = `My IP: ${PublicIP}`;
     }
-    util.showLoading("Checking Prerequisites...");
-    let IsChiaInstalled = await BackendApi.checkPrerequisites();
-    util.hideLoading();
     if (IsChiaInstalled.status !== undefined && IsChiaInstalled.status === "success") {
         util.GoHome();
         video.loadPending();
@@ -34,4 +35,6 @@ window.addEventListener('load', async () => {
         util.showAlert("",IsChiaInstalled.message);
         return;
     }
+
+    
 });

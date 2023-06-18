@@ -515,10 +515,10 @@ Video.prototype.addMirror = async function (Video) {
         PublicIP: publicIP
     };
 }
-Video.prototype.confirmMirror = async function (IdVideo,Mirror = null) {
+Video.prototype.confirmMirror = async function (IdVideo, Mirror = null) {
     try {
         const response = await this.DL.getMirrors(IdVideo);
-        const publicIP = Mirror == null ? await this.Util.getPublicIP():this.Util.getIPFromURL(Mirror);
+        const publicIP = Mirror == null ? await this.Util.getPublicIP() : this.Util.getIPFromURL(Mirror);
         if (!publicIP && Mirror == null) {
             return {
                 status: "error",
@@ -526,7 +526,7 @@ Video.prototype.confirmMirror = async function (IdVideo,Mirror = null) {
                 PublicIP: publicIP
             };
         }
-        Mirror = Mirror == null ? `http://${publicIP}:8575`:Mirror;
+        Mirror = Mirror == null ? `http://${publicIP}:8575` : Mirror;
         const isMirror = this.checkIfMirror(response.mirrors, Mirror);
         if (!isMirror) {
             return {
@@ -604,6 +604,35 @@ Video.prototype.deletePending = function (Id) {
         this.dbDisconnect();
     });
 }
+Video.prototype.compareChunkDataWithJSON = function (chunkData, jsonFilePath) {
+    try {
+        const jsonData = fs.readFileSync(jsonFilePath, 'utf8');
+        const parsedData = JSON.parse(jsonData);
+
+        const insertAction = parsedData.changelist.slice().reverse().find((item) => item.action === 'insert');
+        if (!insertAction) {
+            console.log('INSERT NOT FOUND IN JSON FILE');
+            return false;
+        }
+        insertAction.value = this.Util.hexToString(insertAction.value);
+        const indexPipe = insertAction.value.indexOf("|");
+        insertAction.value = insertAction.value.substring(indexPipe + 1);
+        insertAction.value = this.Util.stringToHex(insertAction.value);
+        
+
+        if (chunkData === insertAction.value) {
+            console.log('El contenido del chunk coincide con el último valor de acción "insert" en el archivo JSON.');
+            return true;
+        } else {
+            console.log('El contenido del chunk es diferente al último valor de acción "insert" en el archivo JSON.');
+            return false;
+        }
+    } catch (error) {
+        console.log('Error al leer o analizar el archivo JSON:', error);
+        return false;
+    }
+}
+  
 Video.prototype.insertChunk = async function (Video) {
     return new Promise(async (resolve, reject) => {
         try {
@@ -653,7 +682,7 @@ Video.prototype.insertChunk = async function (Video) {
                 return;
             }
             const filePath = await this.createJsonChunkParam(Video, Index2Continue);
-
+            
             let OutputCmd = await this.DL.batchUpdate(filePath);
             if (OutputCmd.success === true) {
                 console.log(`Chunk ${Index2Continue + 1} de ${totalChunks} processed`);

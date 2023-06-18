@@ -195,8 +195,8 @@ VideoFile.prototype.getChunk = async function (IdVideo, Part, TotalChunks, AppPa
         if (Response.value !== undefined) {
             Response.value = this.Util.hexToString(Response.value);
             const indexPipe = Response.value.indexOf("|");
-            const chunkName = Response.value.substring(0, indexPipe).trim();
-            Response.value = Response.value.substring(indexPipe + 1).trim();
+            const chunkName = Response.value.substring(0, indexPipe);
+            Response.value = Response.value.substring(indexPipe + 1);
             console.log(`Chunk ${Part} ${chunkName} de ${TotalChunks} obtenido`);
             return this.Util.stringToHex(Response.value);
         }
